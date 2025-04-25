@@ -1,0 +1,74 @@
+{
+  "name": "schema-env",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Type-safe environment variable validation for Node.js using Zod schemas. Load .env files and validate process.env at startup.",
+  "keywords": [
+    "env",
+    "environment",
+    "config",
+    "configuration",
+    "validate",
+    "validation",
+    "typescript",
+    "zod",
+    "dotenv",
+    "type-safe",
+    "schema"
+  ],
+  "author": "devvictrix <dev.victrix@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/devvictrix/schema-env#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devvictrix/schema-env.git"
+  },
+  "bugs": {
+    "url": "https://github.com/devvictrix/schema-env/issues"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean --sourcemap",
+    "format": "prettier --write .",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0"
+  },
+  "peerDependencies": {
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.15.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.2",
+    "tsup": "^8.2.3",
+    "typescript": "^5.8.3",
+    "zod": "^3.24.3"
+  }
+}
