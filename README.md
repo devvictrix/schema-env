@@ -1,6 +1,7 @@
 # schema-env
 
-[![npm version](https://badge.fury.io/js/schema-env.svg)](https://badge.fury.io/js/schema-env) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://badge.fury.io/js/schema-env.svg)](https://badge.fury.io/js/schema-env)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Type-safe environment variable validation for Node.js using Zod schemas.**
 
@@ -122,7 +123,7 @@ createEnv<T extends z.ZodObject<any>>(options: {
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+Contributions (bug reports, feature requests) are welcome!
 
 ## 📄 License
 
