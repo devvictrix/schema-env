@@ -142,5 +142,6 @@ build/Release
 # --- Project Specific ---
 # Add any files specific to *this* project that should be ignored
 consolidated_output.txt
-specs/
 docs/
+examples/
+specs/

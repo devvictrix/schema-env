@@ -1,10 +1,12 @@
 // src/index.ts
 
 import dotenv from "dotenv";
-import { z, ZodObject, ZodSchema, ZodError } from "zod";
+import { z, ZodObject, ZodSchema } from "zod";
 
 // Define the expected signature of dotenv.config for typing
-type DotenvConfigFunction = (options?: dotenv.DotenvConfigOptions) => dotenv.DotenvConfigOutput;
+type DotenvConfigFunction = (
+  options?: dotenv.DotenvConfigOptions
+) => dotenv.DotenvConfigOutput;
 
 /**
  * Options for configuring `createEnv`.
@@ -53,20 +55,27 @@ export function createEnv<T extends ZodSchema>(
     const result = configDotenv({ path: dotEnvPath });
 
     if (result.error) {
-      const hasCodeProperty = Object.prototype.hasOwnProperty.call(result.error, "code");
-      const errorCode = hasCodeProperty ? (result.error as NodeJS.ErrnoException).code : undefined;
+      const hasCodeProperty = Object.prototype.hasOwnProperty.call(
+        result.error,
+        "code"
+      );
+      const errorCode = hasCodeProperty
+        ? (result.error as NodeJS.ErrnoException).code
+        : undefined;
 
       if (errorCode !== "ENOENT") {
-        throw new Error(`❌ Failed to load .env file from ${dotEnvPath}: ${result.error.message}`);
+        throw new Error(
+          `❌ Failed to load .env file from ${dotEnvPath}: ${result.error.message}`
+        );
       }
     }
-    dotEnvValues = (!result.error && result.parsed) ? result.parsed : {};
+    dotEnvValues = !result.error && result.parsed ? result.parsed : {};
   }
 
   // 2. Get Schema Defaults (handled by Zod)
 
   // 3. Prepare Source Object Explicitly
-  const sourceForValidation: Record<string, any> = {};
+  const sourceForValidation: Record<string, unknown> = {};
   const schemaKeys = Object.keys(schema.shape);
 
   schemaKeys.forEach((key) => {
@@ -86,7 +95,9 @@ export function createEnv<T extends ZodSchema>(
   // 5. Handle Validation Failure
   if (!parsed.success) {
     const { error } = parsed;
-    const formattedErrors = error.errors.map((err) => `  - ${err.path.join(".")}: ${err.message}`);
+    const formattedErrors = error.errors.map(
+      (err) => `  - ${err.path.join(".")}: ${err.message}`
+    );
     const errorMessage = `❌ Invalid environment variables:\n${formattedErrors.join("\n")}`;
     console.error(errorMessage); // Log the detailed error
     throw new Error("Environment validation failed. Check console output.");

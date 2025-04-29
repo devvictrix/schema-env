@@ -11,11 +11,13 @@ import {
 import { z } from "zod";
 import { createEnv } from "../src/index";
 // ---> ADD TYPE IMPORTS FROM DOTENV <---
-import type { DotenvConfigOptions, DotenvConfigOutput } from 'dotenv';
+import type { DotenvConfigOptions, DotenvConfigOutput } from "dotenv";
 
 // ---> DEFINE TYPE ALIAS LOCALLY <---
 // Define the expected signature for the mock function, matching src/index.ts
-type DotenvConfigFunction = (options?: DotenvConfigOptions) => DotenvConfigOutput;
+type DotenvConfigFunction = (
+  options?: DotenvConfigOptions
+) => DotenvConfigOutput;
 
 // ---> CREATE A *TYPED* MOCK FUNCTION <---
 // This tells TypeScript the expected signature of the mock
@@ -52,9 +54,9 @@ const setupEnvironment = (
   const keysToManage = [
     ...Object.keys(testSchema.shape),
     ...Object.keys(processEnvOverrides),
-    'NODE_ENV',
+    "NODE_ENV",
   ];
-  new Set(keysToManage).forEach(key => {
+  new Set(keysToManage).forEach((key) => {
     delete process.env[key];
   });
   for (const key in processEnvOverrides) {
@@ -66,7 +68,6 @@ const setupEnvironment = (
 
 // --- Test Suites (Injection should now type-check correctly) ---
 describe("createEnv", () => {
-
   it("should return validated env with defaults when no sources provide values", () => {
     setupEnvironment({
       API_URL: "https://test.com",
@@ -80,7 +81,7 @@ describe("createEnv", () => {
     // ---> NO TYPE ERROR EXPECTED HERE NOW <---
     const env = createEnv({
       schema: testSchema,
-      _internalDotenvConfig: mockedDotenvConfig
+      _internalDotenvConfig: mockedDotenvConfig,
     });
 
     expect(env).toEqual({
@@ -108,7 +109,7 @@ describe("createEnv", () => {
     // ---> NO TYPE ERROR EXPECTED HERE NOW <---
     const env = createEnv({
       schema: testSchema,
-      _internalDotenvConfig: mockedDotenvConfig
+      _internalDotenvConfig: mockedDotenvConfig,
     });
 
     expect(env).toEqual({
@@ -124,7 +125,6 @@ describe("createEnv", () => {
   // ... (rest of the test cases remain the same, the injection point
   //      _internalDotenvConfig: mockedDotenvConfig
   //      should now pass type checking in all of them) ...
-
 
   it("should return validated env with values from process.env overriding .env and defaults", () => {
     const processOverrides = {
@@ -142,7 +142,7 @@ describe("createEnv", () => {
 
     const env = createEnv({
       schema: testSchema,
-      _internalDotenvConfig: mockedDotenvConfig
+      _internalDotenvConfig: mockedDotenvConfig,
     });
 
     expect(env).toEqual({
@@ -164,7 +164,10 @@ describe("createEnv", () => {
       OPTIONAL_VAR: "is_present",
     });
     mockedDotenvConfig.mockReturnValue({ parsed: {} });
-    let env1 = createEnv({ schema: testSchema, _internalDotenvConfig: mockedDotenvConfig });
+    const env1 = createEnv({
+      schema: testSchema,
+      _internalDotenvConfig: mockedDotenvConfig,
+    });
     expect(env1.OPTIONAL_VAR).toBe("is_present");
     expect(mockedDotenvConfig).toHaveBeenCalledTimes(1);
 
@@ -176,7 +179,10 @@ describe("createEnv", () => {
       SECRET_KEY: "longenoughsecretkey2",
     });
     mockedDotenvConfig.mockReturnValue({ parsed: {} });
-    let env2 = createEnv({ schema: testSchema, _internalDotenvConfig: mockedDotenvConfig });
+    const env2 = createEnv({
+      schema: testSchema,
+      _internalDotenvConfig: mockedDotenvConfig,
+    });
     expect(env2.OPTIONAL_VAR).toBeUndefined();
     expect(mockedDotenvConfig).toHaveBeenCalledTimes(1);
   });
@@ -187,16 +193,27 @@ describe("createEnv", () => {
     });
     mockedDotenvConfig.mockReturnValue({ parsed: {} });
 
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     expect(() => {
-      createEnv({ schema: testSchema, _internalDotenvConfig: mockedDotenvConfig });
+      createEnv({
+        schema: testSchema,
+        _internalDotenvConfig: mockedDotenvConfig,
+      });
     }).toThrow("Environment validation failed. Check console output.");
 
     expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("❌ Invalid environment variables:"));
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("- API_URL: Required"));
-    expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining("- SECRET_KEY"));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("❌ Invalid environment variables:")
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("- API_URL: Required")
+    );
+    expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("- SECRET_KEY")
+    );
     consoleErrorSpy.mockRestore();
     expect(mockedDotenvConfig).toHaveBeenCalledTimes(1);
   });
@@ -208,20 +225,29 @@ describe("createEnv", () => {
         API_URL: "https://valid.url/api",
         SECRET_KEY: "aValidSecretKey123",
         PORT: "not-a-number",
-      }
+      },
     });
 
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     expect(() => {
-      createEnv({ schema: testSchema, _internalDotenvConfig: mockedDotenvConfig });
+      createEnv({
+        schema: testSchema,
+        _internalDotenvConfig: mockedDotenvConfig,
+      });
     }).toThrow("Environment validation failed. Check console output.");
 
     expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("❌ Invalid environment variables:"));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("❌ Invalid environment variables:")
+    );
     // The actual error message might vary slightly based on Zod version, but it relates to PORT
     // Let's check for the key rather than the exact message for robustness
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("- PORT:"));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("- PORT:")
+    );
     // If specific message is needed:
     // expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Expected number, received nan"));
     consoleErrorSpy.mockRestore();
@@ -237,7 +263,10 @@ describe("createEnv", () => {
     mockedDotenvConfig.mockReturnValue({ error: loadError });
 
     expect(() => {
-      createEnv({ schema: testSchema, _internalDotenvConfig: mockedDotenvConfig });
+      createEnv({
+        schema: testSchema,
+        _internalDotenvConfig: mockedDotenvConfig,
+      });
     }).toThrow(`❌ Failed to load .env file from ./.env: ${loadError.message}`);
 
     expect(mockedDotenvConfig).toHaveBeenCalledTimes(1);
@@ -252,7 +281,7 @@ describe("createEnv", () => {
     const env = createEnv({
       schema: testSchema,
       dotEnvPath: false,
-      _internalDotenvConfig: mockedDotenvConfig // Provide mock, but it shouldn't be called
+      _internalDotenvConfig: mockedDotenvConfig, // Provide mock, but it shouldn't be called
     });
 
     expect(env.API_URL).toBe("https://no-dotenv.com");

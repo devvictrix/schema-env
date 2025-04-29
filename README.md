@@ -34,30 +34,34 @@ pnpm add schema-env zod dotenv
 ## 🛠️ Usage
 
 ### 1. Define Your Schema
+
 Create a Zod schema for your environment variables. Use `.default()`, `.optional()`, and coercion methods like `z.coerce.number()` or `z.coerce.boolean()` as needed.
 
 ```ts
 // src/env-schema.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 export const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   DATABASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(3000),
   API_KEY: z.string().min(10),
   ENABLE_FEATURE_X: z.coerce.boolean().default(false),
   // Optional
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
 });
 ```
 
 ### 2. Create Your Environment Object
+
 Call `createEnv` early in your application entrypoint to load and validate the variables.
 
 ```ts
 // src/config.ts
-import { createEnv } from 'schema-env';
-import { envSchema } from './env-schema';
+import { createEnv } from "schema-env";
+import { envSchema } from "./env-schema";
 
 export const env = createEnv({
   schema: envSchema,
@@ -67,14 +71,15 @@ export const env = createEnv({
   // dotEnvPath: false,
 });
 
-console.log('Mode:', env.NODE_ENV);
-console.log('DB URL:', env.DATABASE_URL);
-console.log('Port:', env.PORT);
-if (env.ENABLE_FEATURE_X) console.log('Feature X enabled');
-if (env.LOG_LEVEL) console.log('Log level:', env.LOG_LEVEL);
+console.log("Mode:", env.NODE_ENV);
+console.log("DB URL:", env.DATABASE_URL);
+console.log("Port:", env.PORT);
+if (env.ENABLE_FEATURE_X) console.log("Feature X enabled");
+if (env.LOG_LEVEL) console.log("Log level:", env.LOG_LEVEL);
 ```
 
 ### 3. Create a `.env` File (Optional)
+
 Place a `.env` file at the project root (or your custom path) to define environment-specific values.
 
 ```dotenv
@@ -88,6 +93,7 @@ LOG_LEVEL=info
 ```
 
 ## 🔄 Environment Variable Precedence
+
 1. **Schema Defaults** (`.default()` in Zod schema)
 2. **.env File** (if `dotEnvPath` is not `false`)
 3. **process.env** variables
@@ -95,6 +101,7 @@ LOG_LEVEL=info
 The merged object is then validated against your Zod schema.
 
 ## ❗ Error Handling
+
 On validation failure, `createEnv` will:
 
 - Log a detailed error summary to `console.error`.
@@ -116,10 +123,10 @@ createEnv<T extends z.ZodObject<any>>(options: {
 }): z.infer<T>
 ```
 
-| Option      | Type                   | Default   | Description                                    |
-| ----------- | ---------------------- | --------- | ---------------------------------------------- |
-| `schema`    | `ZodObject`            | required  | Zod schema defining your env variables         |
-| `dotEnvPath`| `string \| false`      | `'.env'`  | Path to `.env` file, or `false` to skip loading|
+| Option       | Type              | Default  | Description                                     |
+| ------------ | ----------------- | -------- | ----------------------------------------------- |
+| `schema`     | `ZodObject`       | required | Zod schema defining your env variables          |
+| `dotEnvPath` | `string \| false` | `'.env'` | Path to `.env` file, or `false` to skip loading |
 
 ## 🤝 Contributing
 
@@ -128,4 +135,3 @@ Contributions (bug reports, feature requests) are welcome!
 ## 📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
