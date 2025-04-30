@@ -1,7 +1,7 @@
 {
   "name": "schema-env",
   "type": "module",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Type-safe environment variable validation for Node.js using Zod schemas. Load .env files and validate process.env at startup.",
   "keywords": [
     "env",
@@ -13,6 +13,7 @@
     "typescript",
     "zod",
     "dotenv",
+    "dotenv-expand",
     "type-safe",
     "schema"
   ],
@@ -61,7 +62,8 @@
     "prepublishOnly": "npm run validate && npm run build"
   },
   "dependencies": {
-    "dotenv": "^16.5.0"
+    "dotenv": "^16.5.0",
+    "dotenv-expand": "^12.0.2"
   },
   "peerDependencies": {
     "zod": "^3.0.0"
