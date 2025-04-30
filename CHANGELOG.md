@@ -33,9 +33,9 @@ _(Bug fixes for the next release)_
 
 _(Security vulnerability fixes)_
 
-## [1.2.0] - YYYY-MM-DD
+## [1.2.0] - 2025-04-30
 
-_(Note: Replace YYYY-MM-DD with actual release date)_
+_(Note: Replace YYYY-MM-DD with actual release date)_ <-- Note: This sub-note is now technically redundant but left as per original file structure.
 
 ### Added
 

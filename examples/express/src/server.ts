@@ -21,7 +21,8 @@ try {
   console.log(
     `[schema-env] Environment validated successfully for NODE_ENV=${env.NODE_ENV}`
   );
-} catch (error: any) { // Use any for error type safety
+} catch (error: any) {
+  // Use any for error type safety
   console.error("❌ Fatal: Environment validation failed.");
   // Error details are already logged by createEnv
   process.exit(1);
