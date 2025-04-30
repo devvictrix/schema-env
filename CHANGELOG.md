@@ -1,5 +1,3 @@
-# File: CHANGELOG.md
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -44,7 +42,7 @@ _(Note: Replace YYYY-MM-DD with actual release date)_
 - **Multiple `.env` File Paths:** The `dotEnvPath` option now accepts an array of file paths (e.g., `['.env.base', '.env.local']`). Files are loaded sequentially, with later files overriding earlier ones (`REQ-LOAD-04`).
 - **Environment-Specific `.env` Loading:** Support for automatically loading environment-specific `.env` files (e.g., `.env.development`) based on `NODE_ENV`. This file is loaded _after_ any paths specified in `dotEnvPath` (unless `dotEnvPath` is `false`) and overrides them (`REQ-LOAD-05`).
 - **Variable Expansion:** Optional variable expansion using `dotenv-expand` via the `expandVariables: boolean` option (default: `false`). Expansion applies to the merged dictionary of _all_ loaded `.env` file values (base, array paths, env-specific) _before_ merging with `process.env` and validation (`REQ-LOAD-06`). Added `dotenv-expand` as a production dependency.
-- **Comprehensive Examples:** Added `/examples` directory demonstrating basic usage, Express integration, and common Zod patterns (`REQ-DX-01`).
+- **Comprehensive Examples:** Added `/examples` directory demonstrating basic usage, Express integration, and common Zod patterns, now including example `.env` files (`REQ-DX-01`).
 - **Enhanced Unit Tests:** Added tests covering multiple file loading, environment-specific loading, variable expansion, precedence, and edge cases (`NFR-TEST-02`).
 
 ### Changed
@@ -57,6 +55,7 @@ _(Note: Replace YYYY-MM-DD with actual release date)_
 - Updated `README.md` and TSDoc comments to document all v1.2.0 features and the updated merge precedence.
 - Internal file loading logic refactored to support array paths and correct precedence.
 - Updated development dependencies (e.g., `@types/node`, `eslint`, `prettier`). _(Assumption)_
+- Updated section titles in `specs/REQUIREMENTS.md` and `specs/NFRS.md` to reflect v1.2.0.
 
 ### Fixed
 

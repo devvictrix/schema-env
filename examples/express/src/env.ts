@@ -13,6 +13,8 @@ export const envSchema = z.object({
     .min(10, "SESSION_SECRET must be at least 10 characters"),
   CORS_ORIGIN: z.string().url().optional(), // Optional URL
   REQUEST_LOGGING: z.coerce.boolean().default(false),
+  // Added for multi-file example
+  OVERRIDDEN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

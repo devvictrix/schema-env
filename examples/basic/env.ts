@@ -17,6 +17,16 @@ export const envSchema = z.object({
     .default("info")
     .optional(), // Optional with default
   RETRIES: z.coerce.number().int().min(0).default(3), // Optional number with default
+  SECRET_KEY: z.string().min(10, "SECRET_KEY must be at least 10 characters"), // Added for example/testing
+  // For multi-file/expansion examples
+  FROM_BASE: z.string().optional(),
+  FROM_LOCAL: z.string().optional(),
+  FROM_ENV_SPECIFIC: z.string().optional(),
+  OVERRIDDEN: z.string().optional(),
+  BASE_URL: z.string().default("http://localhost"),
+  FULL_API_URL: z.string().optional(), // e.g., ${BASE_URL}/api
+  VAR_B: z.string().optional(), // For expansion example
+  PORT: z.coerce.number().int().positive().default(8080), // Added PORT for multi-file/env-specific override example
 });
 
 // Infer the TS type from the schema

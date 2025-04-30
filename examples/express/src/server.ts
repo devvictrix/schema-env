@@ -1,5 +1,3 @@
-// File: examples/express/src/server.ts (Updated Import)
-
 import express from "express";
 import cors from "cors";
 // This import relies on the main library being built (npm run build in root)
@@ -12,11 +10,18 @@ let env: Env;
 
 try {
   // Validate environment at the very start
-  env = createEnv({ schema: envSchema });
+  // This example uses the default behavior (loads .env, then .env.${NODE_ENV})
+  // You could explicitly specify paths like in the basic example:
+  // dotEnvPath: ['./.env.base', './.env.local']
+  env = createEnv({
+    schema: envSchema,
+    // dotEnvPath: ['./.env.base', './.env.local'], // Example using array paths
+    // expandVariables: true, // Example enabling expansion
+  });
   console.log(
     `[schema-env] Environment validated successfully for NODE_ENV=${env.NODE_ENV}`
   );
-} catch (error) {
+} catch (error: any) { // Use any for error type safety
   console.error("❌ Fatal: Environment validation failed.");
   // Error details are already logged by createEnv
   process.exit(1);
@@ -47,8 +52,9 @@ app.get("/", (req, res) => {
   res.json({
     message: "Hello from schema-env Express example!",
     environment: env.NODE_ENV,
+    overridden_example: env.OVERRIDDEN, // Show the overridden value
   });
-}); // Closing brace was missing here
+});
 
 app.get("/health", (req, res) => {
   // Here you might check database connection using env.DATABASE_URL

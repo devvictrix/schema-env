@@ -3,164 +3,130 @@
 [![npm version](https://badge.fury.io/js/schema-env.svg)](https://badge.fury.io/js/schema-env)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Type-safe environment variable validation for Node.js using Zod schemas. Load `.env` files (including environment-specific ones), validate against your schema, leverage Zod's coercion, perform optional variable expansion, and get a fully typed environment object for your application startup.
+Type-safe environment variable validation for Node.js using Zod schemas. Load .env files, merge with process.env, optionally expand variables, and validate against your schema at application startup, ensuring your configuration is correct and type-safe from the beginning.
 
-**Ensures your application starts with a valid and typed environment, catching errors early.**
+**Features**
 
----
-
-## Features
-
-- ✅ **Type-Safe:** Uses your Zod schema to infer the return type.
-- ✅ **Validation:** Ensures required variables are present and correctly typed using Zod.
-- ✅ **Coercion:** Leverages Zod's coercion (e.g., strings to numbers/booleans).
-- ✅ **`.env` Loading:** Automatically loads variables from `.env` files.
-- ✅ **Environment-Specific Files:** Supports `.env.${NODE_ENV}` files (e.g., `.env.development`, `.env.production`). (v1.1.0+)
-- ✅ **Variable Expansion:** Optionally expands variables like `${VAR}` using `dotenv-expand`. (v1.1.0+)
-- ✅ **Clear Errors:** Reports all validation errors clearly before throwing.
-- ✅ **Standard Precedence:** Merges defaults, `.env` files, and `process.env` predictably.
-- ✅ **Zero Dependencies (Runtime):** Relies only on `dotenv`, `dotenv-expand`, and `zod`.
+- ✅ **Type Safety:** Uses your Zod schema to infer the type of the resulting environment object.
+- ✅ **Validation:** Ensures required environment variables are present and correctly typed (using Zod's validation and coercion).
+- ✅ **.env Loading:** Loads variables from .env files (default, environment-specific, or custom paths).
+- ✅ **Multiple Files:** Supports loading from an array of .env file paths.
+- ✅ **Clear Precedence:** Well-defined and documented variable source merging order.
+- ✅ **Variable Expansion:** Optional support for expanding variables within .env files (e.g., `API_URL=${BASE_URL}/api`) via dotenv-expand.
+- ✅ **Fail-Fast:** Throws a clear, aggregated error on validation failure, preventing startup with invalid configuration.
+- ✅ **No process.env Mutation:** Does not modify the global process.env object.
 
 ---
 
 ## Installation
 
 ```bash
-npm install schema-env zod dotenv dotenv-expand
+npm install schema-env zod
 # or
-yarn add schema-env zod dotenv dotenv-expand
+yarn add schema-env zod
 # or
-pnpm add schema-env zod dotenv dotenv-expand
+pnpm add schema-env zod
 ```
 
-> **Note:** `zod` is a required peer dependency. `dotenv` and `dotenv-expand` are direct dependencies used internally but are commonly installed in projects using `.env` files.
-
----
+> **Note:** Zod is a peer dependency and must be installed alongside schema-env.
 
 ## Usage
 
 ### 1. Define Your Schema
 
-Create a Zod object schema for your environment variables. Use `.default()` for optional values and Zod's coercion (`z.coerce.*`) where needed.
+Create a file (e.g., `src/env.ts`) and define your Zod schema:
 
-```typescript
-// src/envSchema.ts
+```ts
 import { z } from "zod";
 
 export const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-  DATABASE_URL: z.string().url(),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  API_URL: z.string().url("Invalid API URL"),
   PORT: z.coerce.number().int().positive().default(3000),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
   ENABLE_FEATURE_X: z.coerce.boolean().default(false),
-  API_TIMEOUT_MS: z.coerce.number().optional(),
-  API_BASE_URL: z.string().url().default("https://api.example.com"),
-  FULL_API_ENDPOINT: z.string().url().optional(),
 });
 
-// Infer the type for type safety
 export type Env = z.infer<typeof envSchema>;
 ```
 
-### 2. Create `.env` Files (Optional)
+### 2. Validate Environment at Startup
 
-Place your environment variables in `.env` files:
+Call `createEnv` early in your application's entry point (e.g., `src/index.ts`):
 
-- **.env** (base configuration, loaded in all environments):
-
-```dotenv
-DATABASE_URL="postgresql://user:password@db.local:5432/mydb"
-API_TIMEOUT_MS=5000
-API_BASE_URL="https://api.dev.example.com"
-FULL_API_ENDPOINT="${API_BASE_URL}/v1/users"
-```
-
-- **.env.development** (for `NODE_ENV=development`)
-- **.env.production** (for `NODE_ENV=production`):
-
-```dotenv
-# .env.production
-DATABASE_URL="postgresql://prod_user:prod_pass@db.prod:5432/prod_db"
-ENABLE_FEATURE_X=true
-API_BASE_URL="https://api.prod.example.com"
-# Note: FULL_API_ENDPOINT expands using the production API_BASE_URL
-```
-
-### 3. Initialize at Startup
-
-Call `createEnv` early in your application's entry point.
-
-```typescript
-// src/index.ts
+```ts
 import { createEnv } from "schema-env";
-import { envSchema } from "./envSchema.js";
+import { envSchema, Env } from "./env.js"; // Use .js extension for ESM compatibility
 
-const env = createEnv({
-  schema: envSchema,
-  expandVariables: true, // defaults to false
-  // dotEnvPath: './config/.env.base', // custom path
-  // dotEnvPath: false,               // disable .env loading
-});
+let env: Env;
 
-console.log("Running in", env.NODE_ENV, "mode on port", env.PORT);
-console.log("Database URL:", env.DATABASE_URL);
-console.log("Feature X enabled:", env.ENABLE_FEATURE_X);
-if (env.API_TIMEOUT_MS) {
-  console.log("API Timeout:", env.API_TIMEOUT_MS);
+try {
+  env = createEnv({ schema: envSchema });
+  console.log("✅ Environment variables validated successfully!");
+  console.log(`Running in ${env.NODE_ENV} mode on port ${env.PORT}`);
+} catch (error) {
+  console.error("❌ Failed to initialize environment:", error);
+  process.exit(1);
 }
-console.log("Full API Endpoint:", env.FULL_API_ENDPOINT);
+
+// Your application logic here...
 ```
 
----
+### 3. Create a .env File (Optional)
+
+Place environment variables in a `.env` file in your project root:
+
+```dotenv
+API_URL=https://api.production.com
+PORT=8080
+ENABLE_FEATURE_X=true
+```
 
 ## API
 
-### `createEnv<T extends ZodSchema>(options: CreateEnvOptions<T>): z.infer<T>`
+### `createEnv`
 
-Main function to validate and parse your environment.
+```ts
+createEnv<T extends ZodSchema>(options: CreateEnvOptions<T>): z.infer<T>
+```
 
-- `schema`: Your Zod object schema (`z.object({...})`).
-- `dotEnvPath?`: Path to the base `.env` file (default: `./.env`). Set to `false` to disable loading.
-- `expandVariables?`: If `true`, performs variable expansion on `.env` values before merging. Defaults to `false` (v1.1.0+).
+The main function to validate and load environment variables.
 
-### Loading and Merging Precedence (v1.1.0+)
+### CreateEnvOptions
 
-1. Defaults from Zod schema (`.default()`).
-2. Base `.env` file.
-3. Environment-specific `.env` file (`.env.${NODE_ENV}`).
-4. Variable expansion (if enabled).
-5. `process.env`.
+- `schema` (T, required): The Zod object schema (`z.object({...})`) that defines your expected environment variables, their types, and defaults.
+- `dotEnvPath` (`string | false | string[]`, optional): Specifies which .env file(s) to load.
+  - Default: `undefined` (loads `./.env` by default).
+  - `string`: A specific path to a single .env file.
+  - `string[]`: An array of file paths (loaded in order, later files override earlier ones).
+  - `false`: Disables loading of all .env files (only `process.env` and schema defaults used).
+- `expandVariables` (`boolean`, optional): Default: `false`. If `true`, expands variables within .env files using `dotenv-expand`.
 
-> **Important:** `schema-env` does not modify `process.env`. Expansion only applies to `.env` files.
+## Loading Behavior & Precedence
 
-### Error Handling
+1. **process.env**: Highest priority; environment variables set directly in the shell override all others.
+2. **Environment-Specific File**: If `process.env.NODE_ENV` is set (e.g., `production`) and `dotEnvPath` is not `false`, loads `./.env.${NODE_ENV}`.
+3. **Specified .env Files**: Loads the file(s) specified by `dotEnvPath` (later files override earlier ones).
+4. **Schema Defaults**: Zod schema defaults (`.default()`) apply only if no value is provided by higher-priority sources.
 
-If validation fails, `createEnv`:
+## Error Handling
 
-- Logs detailed errors to `console.error`.
-- Throws `Error("Environment validation failed. Check console output.")`.
-
----
+- Missing `.env` file paths (ENOENT) are skipped silently.
+- Permission errors when reading `.env` files will throw an error.
+- Validation failures produce a clear, aggregated error message and halt application startup.
 
 ## Examples
 
-See the `examples/` directory for practical patterns:
+See the [examples](./examples) directory for practical usage patterns:
 
-- `basic`
-- `express`
-- `expansion`
-- `env-specific`
-- `schema-patterns`
-
----
+- `examples/basic`: Minimal setup.
+- `examples/express`: Integration with an Express.js server.
 
 ## Contributing
 
-Please see `CONTRIBUTING.md`.
-
----
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
