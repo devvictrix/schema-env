@@ -48,7 +48,9 @@ Create a Zod object schema for your environment variables. Use `.default()` for 
 import { z } from "zod";
 
 export const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   DATABASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(3000),
   ENABLE_FEATURE_X: z.coerce.boolean().default(false),
@@ -96,7 +98,7 @@ import { envSchema } from "./envSchema.js";
 
 const env = createEnv({
   schema: envSchema,
-  expandVariables: true,      // defaults to false
+  expandVariables: true, // defaults to false
   // dotEnvPath: './config/.env.base', // custom path
   // dotEnvPath: false,               // disable .env loading
 });
@@ -162,4 +164,3 @@ Please see `CONTRIBUTING.md`.
 ## License
 
 MIT
-

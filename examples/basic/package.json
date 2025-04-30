@@ -1,18 +1,22 @@
 {
-    "name": "schema-env-example-basic",
-    "version": "1.0.0",
-    "description": "Basic example for schema-env",
-    "type": "module",
-    "main": "src/index.js",
-    "scripts": {
-        "start": "node src/index.js",
-        "dev": "NODE_ENV=development node src/index.js",
-        "prod": "TARGET=ProdUser NODE_ENV=production node src/index.js"
-    },
-    "dependencies": {
-        "schema-env": "file:../..",
-        "zod": "^3.24.3"
-    },
-    "author": "",
-    "license": "MIT"
+  "name": "schema-env-example-basic",
+  "version": "1.0.0",
+  "description": "Basic example for schema-env",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts",
+    "dev": "NODE_ENV=development ts-node index.ts",
+    "prod": "TARGET=ProdUser NODE_ENV=production ts-node index.ts"
+  },
+  "dependencies": {
+    "schema-env": "file:../..",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "author": "",
+  "license": "MIT"
 }

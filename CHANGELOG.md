@@ -1,4 +1,4 @@
-// File: CHANGELOG.md
+# File: CHANGELOG.md
 
 # Changelog
 
@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 _(Features currently in progress for the next release will go here)_
-- *(Potentially REQ-LOAD-04 if prioritized)*
-- *(Features for v2.0.0+)*
+
+- _(Features for v2.0.0+)_
 
 ### Changed
 
@@ -35,22 +35,32 @@ _(Bug fixes for the next release)_
 
 _(Security vulnerability fixes)_
 
-## [1.1.0] - YYYY-MM-DD
+## [1.2.0] - YYYY-MM-DD
 
-*(Note: Replace YYYY-MM-DD with actual release date)*
+_(Note: Replace YYYY-MM-DD with actual release date)_
 
 ### Added
 
-- Support for environment-specific `.env` files (e.g., `.env.development`) based on `NODE_ENV` (REQ-LOAD-05). The merge order is now: Schema Defaults < Base `.env` < `.env.${NODE_ENV}` < `process.env`.
-- Optional variable expansion using `dotenv-expand` via the `expandVariables: boolean` option (default: `false`). Expansion applies to merged `.env` file values before `process.env` merge and validation (REQ-LOAD-06). Added `dotenv-expand` as a production dependency.
-- Comprehensive examples in the `/examples` directory demonstrating basic usage, Express integration, and common Zod patterns (REQ-DX-01).
-- Enhanced unit tests covering environment-specific file loading and variable expansion edge cases (`NFR-TEST-02`).
+- **Multiple `.env` File Paths:** The `dotEnvPath` option now accepts an array of file paths (e.g., `['.env.base', '.env.local']`). Files are loaded sequentially, with later files overriding earlier ones (`REQ-LOAD-04`).
+- **Environment-Specific `.env` Loading:** Support for automatically loading environment-specific `.env` files (e.g., `.env.development`) based on `NODE_ENV`. This file is loaded _after_ any paths specified in `dotEnvPath` (unless `dotEnvPath` is `false`) and overrides them (`REQ-LOAD-05`).
+- **Variable Expansion:** Optional variable expansion using `dotenv-expand` via the `expandVariables: boolean` option (default: `false`). Expansion applies to the merged dictionary of _all_ loaded `.env` file values (base, array paths, env-specific) _before_ merging with `process.env` and validation (`REQ-LOAD-06`). Added `dotenv-expand` as a production dependency.
+- **Comprehensive Examples:** Added `/examples` directory demonstrating basic usage, Express integration, and common Zod patterns (`REQ-DX-01`).
+- **Enhanced Unit Tests:** Added tests covering multiple file loading, environment-specific loading, variable expansion, precedence, and edge cases (`NFR-TEST-02`).
 
 ### Changed
 
-- Updated `README.md` to document v1.1.0 features (environment-specific files, expansion, updated merge precedence).
-- Updated development dependencies (e.g., `@types/node`, `eslint`, `prettier`). *(Assumption)*
-- Internal type definition refinement for injected dotenv/expand functions.
+- **Merge Precedence Updated:** The documented and implemented order of precedence for environment variable sources is now:
+  1.  `process.env` (Highest)
+  2.  Environment-specific file (`.env.${NODE_ENV}`)
+  3.  Files in `dotEnvPath` array (later overrides earlier) / Single `dotEnvPath` file / Default `./.env`
+  4.  Schema Defaults (Lowest)
+- Updated `README.md` and TSDoc comments to document all v1.2.0 features and the updated merge precedence.
+- Internal file loading logic refactored to support array paths and correct precedence.
+- Updated development dependencies (e.g., `@types/node`, `eslint`, `prettier`). _(Assumption)_
+
+### Fixed
+
+- Corrected test assertion logic related to precedence involving `process.env`.
 
 ## [1.0.2] - YYYY-MM-DD
 
@@ -84,8 +94,8 @@ _(Date needs to be filled in based on actual release date)_
 - Strongly typed return value based on the provided schema (REQ-API-03).
 - Comprehensive unit tests for core functionality (REQ-TEST-01).
 
-[Unreleased]: https://github.com/devvictrix/schema-env/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/devvictrix/schema-env/compare/v1.0.2...v1.1.0
+[Unreleased]: https://github.com/devvictrix/schema-env/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/devvictrix/schema-env/compare/v1.0.2...v1.2.0
 [1.0.2]: https://github.com/devvictrix/schema-env/releases/tag/v1.0.2
 [1.0.1]: https://github.com/devvictrix/schema-env/releases/tag/v1.0.1
 [1.0.0]: https://github.com/devvictrix/schema-env/releases/tag/v1.0.0

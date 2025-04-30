@@ -9,14 +9,14 @@ import { z } from "zod";
  * - `z.enum()` for variables with a fixed set of allowed values.
  */
 export const envSchema = z.object({
-    NODE_ENV: z.enum(["development", "production"]).default("development"),
-    GREETING: z.string().default("Hello"),
-    TARGET: z.string().min(1, "TARGET environment variable is required"), // Required string
-    LOG_LEVEL: z
-        .enum(["debug", "info", "warn", "error"])
-        .default("info")
-        .optional(), // Optional with default
-    RETRIES: z.coerce.number().int().min(0).default(3), // Optional number with default
+  NODE_ENV: z.enum(["development", "production"]).default("development"),
+  GREETING: z.string().default("Hello"),
+  TARGET: z.string().min(1, "TARGET environment variable is required"), // Required string
+  LOG_LEVEL: z
+    .enum(["debug", "info", "warn", "error"])
+    .default("info")
+    .optional(), // Optional with default
+  RETRIES: z.coerce.number().int().min(0).default(3), // Optional number with default
 });
 
 // Infer the TS type from the schema

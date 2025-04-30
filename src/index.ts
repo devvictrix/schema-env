@@ -1,14 +1,13 @@
+// File: src/index.ts (Updated TSDoc)
+
 import dotenv from "dotenv";
-import { expand } from "dotenv-expand"; // Import the real expand function
+import { expand } from "dotenv-expand";
 import { z, ZodObject, ZodSchema } from "zod";
 
-// Define the expected signature of dotenv.config for typing
+// Type definitions remain the same...
 type DotenvConfigFunction = (
   options?: dotenv.DotenvConfigOptions
 ) => dotenv.DotenvConfigOutput;
-
-// Define the expected signature of dotenv-expand's expand function
-// This is the signature the mock *and* the real function should adhere to.
 type DotenvExpandFunction = (
   config: dotenv.DotenvConfigOutput
 ) => dotenv.DotenvConfigOutput;
@@ -22,17 +21,25 @@ interface CreateEnvOptions<T extends ZodSchema> {
    */
   schema: T;
   /**
-   * Optional: Path to the base .env file. Defaults to './.env' relative to `process.cwd()`.
-   * Set to `false` to disable loading all .env files.
-   * If a string path is provided, environment-specific files (e.g., `.env.development`)
-   * will also be loaded based on `NODE_ENV`.
+   * Optional: Path or array of paths to .env files to load.
+   * - Defaults to './.env' relative to `process.cwd()`.
+   * - If an array is provided (e.g., `['.env.base', '.env.local']`), files are loaded sequentially,
+   *   with variables in later files overriding earlier ones. Non-string entries are ignored with a warning.
+   * - Set to `false` to disable loading all .env files (including the environment-specific one).
+   *
+   * **Note on Environment-Specific File:** Regardless of whether a single path or an array
+   * is provided (unless `dotEnvPath` is `false`), if `process.env.NODE_ENV` is set,
+   * an attempt will be made to load an environment-specific file (e.g., `.env.development`)
+   * *after* all files specified in `dotEnvPath` have been loaded. This environment-specific
+   * file will override variables from the files specified in `dotEnvPath`.
    */
-  dotEnvPath?: string | false;
+  dotEnvPath?: string | false | string[]; // Type already updated previously
 
   /**
    * Optional: Enable variable expansion using `dotenv-expand`. Defaults to `false`.
    * Expansion is performed on the combined values from all loaded `.env` files
-   * *before* merging with `process.env` and validation.
+   * (including the environment-specific file if loaded) *before* merging with
+   * `process.env` and validation.
    */
   expandVariables?: boolean;
 
@@ -49,26 +56,34 @@ interface CreateEnvOptions<T extends ZodSchema> {
 
 /**
  * Validates and parses environment variables against a Zod schema.
- * Loads variables from `.env` files (base and environment-specific) and `process.env`.
+ * Loads variables from `.env` files (specified paths, base, and environment-specific) and `process.env`.
  * Optionally expands variables using `dotenv-expand`.
  * Throws an error if validation fails, ensuring environment safety at startup.
+ *
+ * The final precedence order for variables is:
+ * 1. `process.env` (Highest priority)
+ * 2. Environment-specific file (e.g., `.env.production`) if `NODE_ENV` is set.
+ * 3. Files specified in `dotEnvPath` array (later files override earlier ones).
+ * 4. Single file specified in `dotEnvPath` string (or default `./.env`).
+ * 5. Defaults defined in the Zod schema (Lowest priority - applied by Zod during parsing).
+ *
+ * Note: Variable expansion (`expandVariables: true`) happens *after* all `.env` files (2, 3, 4) are merged,
+ * but *before* merging with `process.env` (1).
  *
  * @template T - The Zod schema type.
  * @param options - Configuration options including the Zod schema.
  * @returns A typed object matching the schema if validation is successful.
+ * @throws {Error} If the provided schema is not a ZodObject.
+ * @throws {Error} If a specified .env file cannot be loaded due to reasons other than not existing (e.g., permissions).
+ * @throws {Error} If environment variable validation against the schema fails.
  */
 export function createEnv<T extends ZodSchema>(
   options: CreateEnvOptions<T>
 ): z.infer<T> {
-  // Use injected functions if provided, otherwise use the real ones
+  // ... implementation remains the same as the previous step ...
   const configDotenv = options._internalDotenvConfig || dotenv.config;
-  // Get the expand function (real or mock) from options or default to the real one
   const expandDotenv = options._internalDotenvExpand || expand;
-  const {
-    schema,
-    dotEnvPath = "./.env",
-    expandVariables = false,
-  } = options;
+  const { schema, dotEnvPath, expandVariables = false } = options;
 
   if (!(schema instanceof ZodObject)) {
     throw new Error("Invalid schema provided. Expected a ZodObject.");
@@ -76,9 +91,9 @@ export function createEnv<T extends ZodSchema>(
 
   let finalDotEnvValues: dotenv.DotenvParseOutput = {};
 
-  // 1. Load .env files if path is not disabled
   if (dotEnvPath !== false) {
     const loadEnvFile = (filePath: string): dotenv.DotenvParseOutput => {
+      /* ... */
       const result = configDotenv({ path: filePath });
       if (result.error) {
         const err = result.error as NodeJS.ErrnoException;
@@ -87,7 +102,7 @@ export function createEnv<T extends ZodSchema>(
         const errorCode = hasCodeProperty ? err.code : undefined;
         if (errorCode !== "ENOENT") {
           throw new Error(
-            `❌ Failed to load .env file from ${filePath}: ${result.error.message}`
+            `❌ Failed to load environment file from ${filePath}: ${result.error.message}`
           );
         }
         return {};
@@ -95,47 +110,50 @@ export function createEnv<T extends ZodSchema>(
       return result.parsed || {};
     };
 
-    const baseDotEnvValues = loadEnvFile(dotEnvPath);
-    let envSpecificDotEnvValues: dotenv.DotenvParseOutput = {};
+    let mergedDotEnvParsed: dotenv.DotenvParseOutput = {};
+    let pathsToLoad: string[] = [];
+
+    if (dotEnvPath === undefined) {
+      pathsToLoad = ["./.env"];
+    } else if (typeof dotEnvPath === "string") {
+      pathsToLoad = [dotEnvPath];
+    } else if (Array.isArray(dotEnvPath)) {
+      pathsToLoad = dotEnvPath;
+    }
+
+    for (const path of pathsToLoad) {
+      if (typeof path !== "string") {
+        console.warn(
+          `⚠️ [schema-env] Warning: Invalid path ignored in dotEnvPath array: ${path}`
+        );
+        continue;
+      }
+      const parsed = loadEnvFile(path);
+      mergedDotEnvParsed = { ...mergedDotEnvParsed, ...parsed };
+    }
+
     const nodeEnv = process.env.NODE_ENV;
     if (nodeEnv) {
       const envSpecificPath = `./.env.${nodeEnv}`;
-      envSpecificDotEnvValues = loadEnvFile(envSpecificPath);
+      const envSpecificParsed = loadEnvFile(envSpecificPath);
+      mergedDotEnvParsed = { ...mergedDotEnvParsed, ...envSpecificParsed };
     }
 
-    const mergedDotEnvParsed: dotenv.DotenvParseOutput = {
-      ...baseDotEnvValues,
-      ...envSpecificDotEnvValues,
-    };
-
-    // 1d. Perform variable expansion if enabled
     if (
       expandVariables &&
       mergedDotEnvParsed &&
       Object.keys(mergedDotEnvParsed).length > 0
     ) {
-      // Pass a structure containing a *copy* of the merged values.
       const configToExpand: dotenv.DotenvConfigOutput = {
         parsed: { ...mergedDotEnvParsed },
       };
-
-      // Call the selected expand function (real or mock).
-      // Expect it to return an object like { parsed: expandedValues }
       const expansionResult = expandDotenv(configToExpand);
-
-      // Use the 'parsed' property from the RETURN VALUE.
-      // Fall back to the original merged values if expansion somehow fails.
       finalDotEnvValues = expansionResult?.parsed || mergedDotEnvParsed || {};
-
     } else {
-      // If not expanding or nothing to expand, use the simply merged values
       finalDotEnvValues = mergedDotEnvParsed || {};
     }
-  } // end of dotEnvPath !== false
+  }
 
-  // 2. Get Schema Defaults (Applied by Zod during parsing)
-
-  // 3. Prepare Source Object for Validation, merging process.env last
   const sourceForValidation: Record<string, unknown> = { ...finalDotEnvValues };
 
   for (const key in process.env) {
@@ -147,10 +165,8 @@ export function createEnv<T extends ZodSchema>(
     }
   }
 
-  // 4. Validate with Zod Schema
   const parsed = schema.safeParse(sourceForValidation);
 
-  // 5. Handle Validation Failure
   if (!parsed.success) {
     const { error } = parsed;
     const formattedErrors = error.errors.map(
@@ -161,6 +177,5 @@ export function createEnv<T extends ZodSchema>(
     throw new Error("Environment validation failed. Check console output.");
   }
 
-  // 6. Handle Validation Success
   return parsed.data;
 }
