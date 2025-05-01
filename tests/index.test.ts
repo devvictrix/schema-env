@@ -1,3 +1,5 @@
+// File: tests/index.test.ts
+
 import {
   jest,
   describe,
@@ -33,7 +35,9 @@ const consoleErrorSpy = jest
   .mockImplementation(() => {});
 const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 
+// Mocks for dependencies, reset before each test
 const mockedDotenvConfig = jest.fn<DotenvConfigFunction>();
+const mockedDotenvExpand = jest.fn<DotenvExpandFunction>();
 
 // --- Test Schema (Includes vars for async tests) ---
 const testSchema = z.object({
@@ -66,17 +70,23 @@ const testSchema = z.object({
 let originalProcessEnv: NodeJS.ProcessEnv;
 
 beforeEach(() => {
+  // Reset mocks
   mockedDotenvConfig.mockReset();
+  mockedDotenvExpand.mockReset(); // Reset expand mock as well
   consoleErrorSpy.mockClear(); // Clear spy calls before each test
   consoleWarnSpy.mockClear();
+
+  // Backup and clear process.env relevant keys
   originalProcessEnv = { ...process.env };
   const keysToClear = [
     ...Object.keys(testSchema.shape),
     "NODE_ENV", // Explicitly clear NODE_ENV too
     "MISSING_VAR", // Any other potential test vars
   ];
-  // Use Set to avoid duplicates and simplify clearing logic
   new Set(keysToClear).forEach((key) => delete process.env[key]);
+
+  // Default successful expand behavior (can be overridden per test)
+  mockedDotenvExpand.mockImplementation((config) => config);
 });
 
 afterEach(() => {
@@ -104,7 +114,7 @@ const setupProcessEnv = (envVars: Record<string, string | undefined>) => {
 const mockDotenvFiles = (
   files: Record<
     string,
-    Record<string, string> | NodeJS.ErrnoException | "ENOENT"
+    Record<string, string> | NodeJS.ErrnoException | "ENOENT" | "UNEXPECTED"
   >
 ) => {
   mockedDotenvConfig.mockImplementation((options) => {
@@ -123,13 +133,19 @@ const mockDotenvFiles = (
       (error as NodeJS.ErrnoException).code = "ENOENT";
       return { error };
     } else if (data instanceof Error) {
-      // Simulate other errors
+      // Simulate other specific errors passed in
       return { error: data };
+    } else if (data === "UNEXPECTED") {
+      // Simulate an unexpected throw *during* config call
+      throw new Error(
+        `Unexpected internal error in dotenv.config for ${pathKey}`
+      );
     } else if (data !== undefined && typeof data === "object") {
       // Return parsed data for successful loads
       return { parsed: { ...data } };
     } else {
-      // Default mock behavior: treat unknown paths as ENOENT
+      // Default mock behavior: treat unknown paths as ENOENT if not specified
+      // console.warn(`Mocking unspecified path ${pathKey} as ENOENT`);
       const error = new Error(
         `ENOENT: no such file or directory, open '${pathKey}' (default mock)`
       );
@@ -139,51 +155,38 @@ const mockDotenvFiles = (
   });
 };
 
+// Use the same mock expander logic as before
 const createLocalMockExpander = (): DotenvExpandFunction => {
   return (config: DotenvConfigOutput): DotenvConfigOutput => {
     if (config.error || !config.parsed) {
       return config; // Pass through errors or empty configs
     }
-
-    // Simple recursive expansion logic (handles basic cases, not all edge cases of real dotenv-expand)
     const parsedCopy: DotenvParseOutput = { ...config.parsed };
-    const lookupValues = { ...config.parsed }; // Values to use for expansion
-
-    // Recursive function to expand a single value
+    const lookupValues = { ...config.parsed };
     const expandValue = (value: string, processing: Set<string>): string => {
       return value.replace(/\$\{([^}]+)\}/g, (match, varName) => {
         if (processing.has(varName)) {
-          // Circular dependency detected
-          // console.warn(`[MockExpander] Circular dependency detected for variable: ${varName}`);
-          return ""; // Return empty string for circular refs
+          return ""; // Circular dependency
         }
-
         if (lookupValues[varName] !== undefined) {
-          // Mark as processing to detect cycles
           processing.add(varName);
-          // Recursively expand the found value
           const expanded = expandValue(lookupValues[varName], processing);
-          // Unmark after processing sub-tree
           processing.delete(varName);
           return expanded;
         }
-        // Variable not found in the lookup map
-        return ""; // Return empty string if var not found
+        return ""; // Var not found
       });
     };
-
-    // Expand each variable in the copied object
     for (const key in parsedCopy) {
       if (
         Object.prototype.hasOwnProperty.call(parsedCopy, key) &&
         typeof parsedCopy[key] === "string"
       ) {
-        const processing = new Set<string>([key]); // Start processing set with the current key
+        const processing = new Set<string>([key]);
         parsedCopy[key] = expandValue(parsedCopy[key], processing);
       }
     }
-
-    return { parsed: parsedCopy }; // Return the modified copy
+    return { parsed: parsedCopy };
   };
 };
 
@@ -236,6 +239,7 @@ describe("createEnv (Synchronous Validation)", () => {
     const env = createEnv({
       schema: testSchema,
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand, // Provide mock expander
     });
     expect(env).toEqual(
       expect.objectContaining({
@@ -250,6 +254,7 @@ describe("createEnv (Synchronous Validation)", () => {
     expect(mockedDotenvConfig).toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion is off by default
   });
 
   it("should return validated env with process.env overriding .env and defaults", () => {
@@ -268,6 +273,7 @@ describe("createEnv (Synchronous Validation)", () => {
     const env = createEnv({
       schema: testSchema,
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     expect(env).toEqual(
       expect.objectContaining({
@@ -283,6 +289,7 @@ describe("createEnv (Synchronous Validation)", () => {
     expect(mockedDotenvConfig).toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 
   it("should throw validation error if required variables are missing", () => {
@@ -292,6 +299,7 @@ describe("createEnv (Synchronous Validation)", () => {
       createEnv({
         schema: testSchema,
         _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
       });
     }).toThrow("Environment validation failed. Check console output.");
     // Check console.error was called with specific message details
@@ -315,13 +323,15 @@ describe("createEnv (Synchronous Validation)", () => {
     mockDotenvFiles({ "./.env": { SHOULD_NOT: "load" } });
     const env = createEnv({
       schema: testSchema,
-      dotEnvPath: false, // Disable loading
+      dotEnvPath: false, // Disable loading explicitly
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     expect(env.API_URL).toBe("https://no-dotenv.com");
     expect(env.SECRET_KEY).toBe("thiskeyislongenough");
     expect(env.PORT).toBe(8080); // Default value
     expect(mockedDotenvConfig).not.toHaveBeenCalled(); // Ensure dotenv.config was never called
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion should not be called
   });
 
   it("should THROW error if .env file fails to load (other than ENOENT)", () => {
@@ -334,6 +344,7 @@ describe("createEnv (Synchronous Validation)", () => {
       createEnv({
         schema: testSchema,
         _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
       });
     }).toThrow(
       // Check for the specific error message thrown by the library
@@ -342,6 +353,7 @@ describe("createEnv (Synchronous Validation)", () => {
     expect(mockedDotenvConfig).toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion should not be reached
   });
 
   it("should handle optional variables correctly", () => {
@@ -354,9 +366,42 @@ describe("createEnv (Synchronous Validation)", () => {
     const env = createEnv({
       schema: testSchema,
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     expect(env.OPTIONAL_VAR).toBe("provided");
     expect(env.FULL_API_URL).toBeUndefined(); // Another optional var, not provided
+  });
+
+  // --- NEW/MODIFIED Branch Coverage Tests (Core) ---
+  it("should THROW if dotenv.config throws an unexpected error during load", () => {
+    // Branch: _loadDotEnvFiles -> catch (e) block
+    setupProcessEnv({});
+    mockDotenvFiles({ "./.env": "UNEXPECTED" }); // Simulate unexpected throw
+
+    expect(() => {
+      createEnv({
+        schema: testSchema,
+        _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
+      });
+    }).toThrow(/Unexpected error during dotenv.config call/);
+    expect(mockedDotenvExpand).not.toHaveBeenCalled();
+  });
+
+  it("should THROW if schema is not a ZodObject (createEnv)", () => {
+    // Branch: createEnv -> !(schema instanceof ZodObject)
+    setupProcessEnv({});
+    mockDotenvFiles({});
+    expect(() => {
+      createEnv({
+        // @ts-expect-error - Deliberately passing invalid schema type
+        schema: z.string(), // Pass a non-object schema
+        _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
+      });
+    }).toThrow("Invalid schema provided. Expected a ZodObject.");
+    expect(mockedDotenvConfig).not.toHaveBeenCalled();
+    expect(mockedDotenvExpand).not.toHaveBeenCalled();
   });
 });
 
@@ -377,6 +422,7 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
     const env = createEnv({
       schema: testSchema,
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     expect(env.API_URL).toBe("https://base.com");
     expect(env.SECRET_KEY).toBe("base-secret-key-123");
@@ -385,6 +431,7 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
     expect(mockedDotenvConfig).toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 
   it("should load .env and .env.development if NODE_ENV=development", () => {
@@ -403,6 +450,7 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
     const env = createEnv({
       schema: testSchema,
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     expect(env.API_URL).toBe("https://dev.com");
     expect(env.SECRET_KEY).toBe("dev-secret-key-456");
@@ -418,6 +466,7 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
       2,
       expect.objectContaining({ path: "./.env.development" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 
   it("should load base .env only if environment-specific file is not found (ENOENT)", () => {
@@ -432,6 +481,7 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
     const env = createEnv({
       schema: testSchema,
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     // Values should come from the base .env file
     expect(env.API_URL).toBe("https://base.com");
@@ -445,6 +495,7 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
     expect(mockedDotenvConfig).toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env.test" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 
   it("should correctly merge: Defaults < Base .env < Env-specific .env < process.env (single base path)", () => {
@@ -473,6 +524,7 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
     const env = createEnv({
       schema: testSchema,
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     expect(env).toEqual(
       expect.objectContaining({
@@ -493,6 +545,7 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
     expect(mockedDotenvConfig).toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env.production" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 
   it("should perform expansion when expandVariables is true (single .env)", () => {
@@ -506,15 +559,17 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
         FULL_API_URL: "${BASE_URL}/v1", // Needs expansion
       },
     });
-    const localMockExpander = createLocalMockExpander(); // Use mock expander
+    // Override default mockExpand to use the local one
+    mockedDotenvExpand.mockImplementation(createLocalMockExpander());
     const env = createEnv({
       schema: testSchema,
       expandVariables: true, // Enable expansion
       _internalDotenvConfig: mockedDotenvConfig,
-      _internalDotenvExpand: localMockExpander, // Inject mock expander
+      _internalDotenvExpand: mockedDotenvExpand, // Inject mock expander
     });
     expect(env.FULL_API_URL).toBe("https://api.example.com/v1"); // Check expanded value
     expect(env.BASE_URL).toBe("https://api.example.com"); // Check base value
+    expect(mockedDotenvExpand).toHaveBeenCalledTimes(1); // Ensure expander was called
   });
 
   it("should NOT perform expansion when expandVariables is false (default)", () => {
@@ -528,15 +583,16 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
         FULL_API_URL: "${BASE_URL}/v1", // Should remain unexpanded
       },
     });
-    const localMockExpander = createLocalMockExpander(); // Mock expander (won't be called)
+    // Use default mock expander (which just returns input)
     const env = createEnv({
       schema: testSchema,
       // expandVariables: false, // Default is false
       _internalDotenvConfig: mockedDotenvConfig,
-      _internalDotenvExpand: localMockExpander,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     expect(env.FULL_API_URL).toBe("${BASE_URL}/v1"); // Check unexpanded value
     expect(env.BASE_URL).toBe("https://api.example.com");
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expander should NOT be called
   });
 
   it("should expand variables drawing values from both base and env-specific files", () => {
@@ -555,17 +611,18 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
         SECRET_KEY: "dev-secret-key-456", // Overrides base, overridden by process.env
       },
     });
-    const localMockExpander = createLocalMockExpander();
+    mockedDotenvExpand.mockImplementation(createLocalMockExpander());
     const env = createEnv({
       schema: testSchema,
       expandVariables: true, // Enable expansion
       _internalDotenvConfig: mockedDotenvConfig,
-      _internalDotenvExpand: localMockExpander,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     // Expansion happens on merged .env files BEFORE process.env merge
     expect(env.FULL_API_URL).toBe("https://base.api/dev"); // Expanded correctly
     expect(env.BASE_URL).toBe("https://base.api"); // From base .env
     expect(env.SECRET_KEY).toBe("dev-secret-is-long-enough"); // Final value from process.env
+    expect(mockedDotenvExpand).toHaveBeenCalledTimes(1);
   });
 
   it("should NOT expand variables from process.env", () => {
@@ -579,17 +636,18 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
       "./.env": { FULL_API_URL: "${BASE_URL}/v1" }, // BASE_URL is not defined in any .env file
       "./.env.production": {}, // Empty env-specific file
     });
-    const localMockExpander = createLocalMockExpander();
+    mockedDotenvExpand.mockImplementation(createLocalMockExpander());
     const env = createEnv({
       schema: testSchema,
       expandVariables: true,
       _internalDotenvConfig: mockedDotenvConfig,
-      _internalDotenvExpand: localMockExpander,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     // Expansion happens only on values loaded from .env files.
     // Since BASE_URL wasn't in .env files, expansion results in empty string for that part.
     expect(env.FULL_API_URL).toBe("/v1"); // Only '/v1' part remains after failed expansion
     expect(env.BASE_URL).toBe("https://process-base.url"); // Final value from process.env
+    expect(mockedDotenvExpand).toHaveBeenCalledTimes(1);
   });
 
   it("should handle multi-level expansion", () => {
@@ -604,16 +662,17 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
         VAR_C: "https://final.value", // Base value
       },
     });
-    const localMockExpander = createLocalMockExpander();
+    mockedDotenvExpand.mockImplementation(createLocalMockExpander());
     const env = createEnv({
       schema: testSchema,
       expandVariables: true,
       _internalDotenvConfig: mockedDotenvConfig,
-      _internalDotenvExpand: localMockExpander,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     expect(env.VAR_C).toBe("https://final.value");
     expect(env.VAR_B).toBe("https://final.value");
     expect(env.VAR_A).toBe("https://final.value/pathA");
+    expect(mockedDotenvExpand).toHaveBeenCalledTimes(1);
   });
 
   it("should handle simple circular dependencies by returning empty string (based on mock expander)", () => {
@@ -622,17 +681,63 @@ describe("createEnv (Env-Specific Files & Expansion)", () => {
       SECRET_KEY: "long-enough-secret-key",
     });
     mockDotenvFiles({ "./.env": { VAR_A: "${VAR_B}", VAR_B: "${VAR_A}" } }); // Circular dependency
-    const localMockExpander = createLocalMockExpander();
+    mockedDotenvExpand.mockImplementation(createLocalMockExpander());
     const env = createEnv({
       schema: testSchema,
       expandVariables: true,
       _internalDotenvConfig: mockedDotenvConfig,
-      _internalDotenvExpand: localMockExpander,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
     // Mock expander should return empty string for circular refs
     expect(env.VAR_A).toBe("");
     expect(env.VAR_B).toBe("");
-    // Don't check consoleWarnSpy here as the mock expander logs it internally if uncommented
+    expect(mockedDotenvExpand).toHaveBeenCalledTimes(1);
+  });
+
+  // --- NEW/MODIFIED Branch Coverage Tests (Expansion) ---
+  it("should handle empty .env file when expansion is enabled", () => {
+    // Branch: _expandDotEnvValues -> !mergedDotEnvParsed or empty keys
+    setupProcessEnv({
+      API_URL: "https://required.com",
+      SECRET_KEY: "long-enough-secret-key",
+    });
+    mockDotenvFiles({ "./.env": {} }); // Empty .env file
+    const env = createEnv({
+      schema: testSchema,
+      expandVariables: true, // Enable expansion
+      _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
+    });
+    expect(env).toBeDefined();
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Should not call expander if no parsed vars
+  });
+
+  it("should handle expansion failure gracefully and log error", () => {
+    // Branch: _expandDotEnvValues -> catch (e) block
+    setupProcessEnv({
+      API_URL: "https://required.com",
+      SECRET_KEY: "long-enough-secret-key",
+    });
+    mockDotenvFiles({ "./.env": { VAR_A: "${VAR_B}" } }); // Parsed vars exist
+    const expansionError = new Error("Expansion failed!");
+    mockedDotenvExpand.mockImplementation(() => {
+      throw expansionError;
+    }); // Make expander throw
+
+    const env = createEnv({
+      schema: testSchema,
+      expandVariables: true,
+      _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
+    });
+
+    expect(env.VAR_A).toBe("${VAR_B}"); // Should return unexpanded value
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Error during variable expansion: ${expansionError.message}`
+      )
+    );
+    expect(mockedDotenvExpand).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -659,6 +764,7 @@ describe("createEnv (Multiple .env Paths)", () => {
       schema: testSchema,
       dotEnvPath: ["./.env.base", "./.env.local"], // Array input
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.FROM_BASE).toBe("yes");
@@ -674,6 +780,7 @@ describe("createEnv (Multiple .env Paths)", () => {
       2,
       expect.objectContaining({ path: "./.env.local" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 
   it("should load multiple files AND environment-specific file, with env-specific overriding array files", () => {
@@ -703,6 +810,7 @@ describe("createEnv (Multiple .env Paths)", () => {
       schema: testSchema,
       dotEnvPath: ["./.env.base", "./.env.local"],
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.FROM_BASE).toBe("yes");
@@ -720,6 +828,7 @@ describe("createEnv (Multiple .env Paths)", () => {
     expect(mockedDotenvConfig).toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env.development" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 
   it("should ignore ENOENT for files within the array path and continue loading", () => {
@@ -736,6 +845,7 @@ describe("createEnv (Multiple .env Paths)", () => {
       schema: testSchema,
       dotEnvPath: ["./.env.base", "./.env.missing", "./.env.local"],
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.FROM_BASE).toBe("yes");
@@ -772,6 +882,7 @@ describe("createEnv (Multiple .env Paths)", () => {
         schema: testSchema,
         dotEnvPath: ["./.env.base", "./.env.bad", "./.env.local"],
         _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
       });
     }).toThrow(
       `❌ Failed to load environment file from ./.env.bad: ${loadError.message}`
@@ -787,6 +898,7 @@ describe("createEnv (Multiple .env Paths)", () => {
     expect(mockedDotenvConfig).not.toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env.local" })
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled();
   });
 
   it("should load array paths, env-specific, and process.env with correct full precedence", () => {
@@ -826,6 +938,7 @@ describe("createEnv (Multiple .env Paths)", () => {
       schema: testSchema,
       dotEnvPath: ["./.env.base", "./.env.local"],
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     // Check final values based on precedence: defaults < base < local < dev < process.env
@@ -857,23 +970,25 @@ describe("createEnv (Multiple .env Paths)", () => {
       "./.env.local": { VAR_B: "${BASE_URL}/local-B", VAR_A: "local-A" }, // Uses BASE_URL from base, overrides VAR_A
       "./.env.development": { VAR_C: "${VAR_A}-dev" }, // Uses VAR_A from local
     });
-    const localMockExpander = createLocalMockExpander();
+    mockedDotenvExpand.mockImplementation(createLocalMockExpander());
 
     const env = createEnv({
       schema: testSchema,
       dotEnvPath: ["./.env.base", "./.env.local"],
       expandVariables: true, // Enable expansion
       _internalDotenvConfig: mockedDotenvConfig,
-      _internalDotenvExpand: localMockExpander,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.BASE_URL).toBe("https://base.url"); // From base
     expect(env.VAR_A).toBe("local-A"); // From local (overrides base)
     expect(env.VAR_B).toBe("https://base.url/local-B"); // Expanded using base BASE_URL
     expect(env.VAR_C).toBe("local-A-dev"); // Expanded using local VAR_A after merge, then dev VAR_C definition
+    expect(mockedDotenvExpand).toHaveBeenCalledTimes(1);
   });
 
   it("should skip non-string paths in dotEnvPath array and warn", () => {
+    // Branch: _loadDotEnvFiles -> Array.isArray branch -> filter callback
     setupProcessEnv({
       API_URL: "https://required.com",
       SECRET_KEY: "longenoughsecretkey",
@@ -884,17 +999,23 @@ describe("createEnv (Multiple .env Paths)", () => {
 
     const env = createEnv({
       schema: testSchema,
-      // @ts-expect-error - Deliberately testing invalid input type
-      dotEnvPath: ["./.env.valid", 123, null, undefined],
+      // @ts-expect-error - Deliberately testing invalid input type for the array itself
+      dotEnvPath: ["./.env.valid", 123, null, undefined, ""], // Include empty string too
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.FROM_BASE).toBe("yes");
-    expect(mockedDotenvConfig).toHaveBeenCalledTimes(1); // Only called for the valid path
+    // Should be called for "./.env.valid" and "" (empty string is a valid path technically for dotenv)
+    expect(mockedDotenvConfig).toHaveBeenCalledTimes(2);
     expect(mockedDotenvConfig).toHaveBeenCalledWith(
       expect.objectContaining({ path: "./.env.valid" })
     );
-    expect(consoleWarnSpy).toHaveBeenCalledTimes(3); // Warnings for 123, null, undefined
+    expect(mockedDotenvConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "" })
+    );
+    // Warnings for non-string types
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(3);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringContaining("Invalid path ignored in dotEnvPath array: 123")
     );
@@ -906,6 +1027,7 @@ describe("createEnv (Multiple .env Paths)", () => {
         "Invalid path ignored in dotEnvPath array: undefined"
       )
     );
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 });
 
@@ -933,6 +1055,37 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
     throw new Error("Failed to fetch from this source");
   };
 
+  // --- NEW/MODIFIED Secret Source Mocks for Branch Coverage ---
+  const mockSyncErrorSource: SecretSourceFunction = () => {
+    // Branch: _fetchSecrets -> catch (syncError) block
+    throw new Error("Sync error inside source function");
+  };
+
+  const mockNonPromiseSource: SecretSourceFunction = () => {
+    // Branch: _fetchSecrets -> else block for non-promise returns
+    // Cast to 'any' first, then to the expected Promise type to satisfy TS.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { SYNC_RETURN: "should-not-work" } as any as Promise<
+      Record<string, string | undefined>
+    >;
+  };
+
+  const mockNonObjectResolvingSource: SecretSourceFunction = async () => {
+    // Branch: _fetchSecrets -> results.forEach -> fulfilled but not object
+    await new Promise((res) => setTimeout(res, 1));
+    // Cast the incorrect return value to satisfy the type checker for the test.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return "i am not an object" as any as Record<string, string | undefined>;
+  };
+
+  const mockNullResolvingSource: SecretSourceFunction = async () => {
+    // Branch: _fetchSecrets -> results.forEach -> fulfilled but null/undefined
+    await new Promise((res) => setTimeout(res, 1));
+    // Cast the incorrect return value to satisfy the type checker for the test.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return null as any as Record<string, string | undefined>;
+  };
+
   it("should resolve successfully with combined sources (.env, secrets, process.env)", async () => {
     setupProcessEnv({
       API_URL: "https://process.env.url", // process.env highest priority
@@ -950,6 +1103,7 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
       schema: testSchema,
       secretsSources: [mockSecretSource1, mockSecretSource2],
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env).toEqual(
@@ -966,6 +1120,7 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
       })
     );
     expect(mockedDotenvConfig).toHaveBeenCalledTimes(1); // Only default .env
+    expect(mockedDotenvExpand).not.toHaveBeenCalled(); // Expansion off
   });
 
   it("should correctly apply precedence: .env < secrets < process.env", async () => {
@@ -990,6 +1145,7 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
       schema: testSchema,
       secretsSources: [secretSource],
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.PORT).toBe(9999); // process.env wins
@@ -1014,20 +1170,21 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
       BASE_URL: "https://secret.base", // Should not affect expansion result for FULL_API_URL
     });
 
-    const localMockExpander = createLocalMockExpander();
+    mockedDotenvExpand.mockImplementation(createLocalMockExpander());
     const env = await createEnvAsync({
       schema: testSchema,
       expandVariables: true, // Enable expansion
       secretsSources: [secretSource],
       _internalDotenvConfig: mockedDotenvConfig,
-      _internalDotenvExpand: localMockExpander,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.FULL_API_URL).toBe("https://env.base/expanded"); // Expanded using .env value
     expect(env.BASE_URL).toBe("https://secret.base"); // Final value from secrets
+    expect(mockedDotenvExpand).toHaveBeenCalledTimes(1);
   });
 
-  it("should resolve successfully even if one secret source fails", async () => {
+  it("should resolve successfully even if one secret source fails (async error)", async () => {
     setupProcessEnv({
       API_URL: "https://required.com",
       SECRET_KEY: "valid-process-key", // Use process.env for required key
@@ -1038,6 +1195,7 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
       schema: testSchema,
       secretsSources: [mockFailingSource, mockSecretSource2], // One fails, one succeeds
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.FROM_SECRET_MANAGER_2).toBe("secret-value-2"); // Value from successful source
@@ -1051,7 +1209,8 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
     );
   });
 
-  it("should resolve successfully using other sources if all secret sources fail", async () => {
+  it("should resolve successfully using other sources if all secret sources fail (multiple failure modes)", async () => {
+    // Branch: _fetchSecrets -> successfulFetches === 0 && secretsSources.length > 0
     setupProcessEnv({
       API_URL: "https://required.com",
       SECRET_KEY: "valid-process-key",
@@ -1061,28 +1220,41 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
 
     const env = await createEnvAsync({
       schema: testSchema,
-      secretsSources: [mockFailingSource, mockFailingSource], // All fail
+      secretsSources: [
+        mockFailingSource,
+        mockSyncErrorSource,
+        mockNonPromiseSource,
+      ], // All fail
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.OVERRIDDEN).toBe("from-process-only");
     expect(env.FROM_SECRET_MANAGER_1).toBeUndefined();
     expect(env.FROM_SECRET_MANAGER_2).toBeUndefined();
-    expect(consoleWarnSpy).toHaveBeenCalledTimes(3); // 2 for individual failures, 1 for all failed
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(4); // 3 for individual failures, 1 for "all failed" summary
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringContaining("Secrets source function at index 0 failed")
     );
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Secrets source function at index 1 failed")
+      expect.stringContaining(
+        "Sync error in secrets source function at index 1"
+      )
     );
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        "Warning: All 2 provided secretsSources functions failed"
+        "Sync return value from secrets source function at index 2"
+      )
+    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Warning: All 3 provided secretsSources functions failed"
       )
     );
   });
 
   it("should handle no secret sources provided", async () => {
+    // Branch: _fetchSecrets -> !secretsSources or empty array
     setupProcessEnv({
       API_URL: "https://required.com",
       SECRET_KEY: "valid-process-key",
@@ -1093,6 +1265,7 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
       schema: testSchema,
       secretsSources: [], // Empty array
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.API_URL).toBe("https://required.com");
@@ -1101,7 +1274,6 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
-  // Test case modified to expect the "Required" error message
   it("should reject promise if validation fails", async () => {
     setupProcessEnv({
       // Missing SECRET_KEY
@@ -1118,6 +1290,7 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
         schema: testSchema,
         secretsSources: [secretSource],
         _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
       })
     ).rejects.toThrow("Environment validation failed. Check console output.");
 
@@ -1144,6 +1317,7 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
         // Call the async function
         schema: testSchema,
         _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
       })
     ).rejects.toThrow(
       // Assert that the promise REJECTS with the specific error
@@ -1151,94 +1325,150 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
     );
   });
 
-  it("should handle secret sources that return non-object values gracefully", async () => {
+  // --- CORRECTED Test (FINAL) ---
+  it("should handle secret sources that return non-object values gracefully and log warning", async () => {
+    // Branch: _fetchSecrets -> fulfilled but non-object
     setupProcessEnv({
       API_URL: "https://required.com",
-      SECRET_KEY: "valid-process-key",
+      SECRET_KEY: "valid-process-key", // Use process.env for required key
     });
     mockDotenvFiles({});
-    const nonObjectSource: SecretSourceFunction = async () => {
-      // Simulate incorrect return type, satisfying the linter
-      return "not-an-object" as unknown as Record<string, string | undefined>;
-    };
-    const nullSource: SecretSourceFunction = async () => {
-      // Simulate incorrect return type (null), satisfying the linter
-      // Note: Returning null/undefined *values* in the Record is fine,
-      // this tests returning null *instead* of a Record.
-      return null as unknown as Record<string, string | undefined>;
-    };
-    const validSource: SecretSourceFunction = async () => ({
-      FROM_SECRET_MANAGER_1: "valid-value",
-    });
 
     const env = await createEnvAsync({
       schema: testSchema,
-      secretsSources: [nonObjectSource, nullSource, validSource],
+      secretsSources: [mockNonObjectResolvingSource, mockSecretSource1], // Non-object first
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
-    expect(env.FROM_SECRET_MANAGER_1).toBe("valid-value"); // From the valid source
+    // Check value from the VALID source
+    expect(env.FROM_SECRET_MANAGER_1).toBe("secret-value-1");
+    // Check value from process.env (highest precedence)
+    expect(env.SECRET_KEY).toBe("valid-process-key"); // *** FINAL CORRECTION ***
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1); // Only one warning for the non-object source
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
         "Warning: Secrets source function at index 0 resolved with non-object value: string"
       )
     );
-    // Null/undefined are ignored silently
   });
 
-  it("should handle secret source functions that return promises resolving to undefined/null", async () => {
+  // --- CORRECTED Test ---
+  it("should handle secret source functions that resolve to undefined/null silently", async () => {
+    // Branch: _fetchSecrets -> fulfilled but null/undefined value
     setupProcessEnv({
       API_URL: "https://required.com",
-      SECRET_KEY: "valid-process-key",
+      SECRET_KEY: "valid-process-key", // process.env has highest precedence
     });
     mockDotenvFiles({});
-    const undefinedSource: SecretSourceFunction = async () => ({});
-    const nullSource: SecretSourceFunction = async () => ({});
 
     const env = await createEnvAsync({
       schema: testSchema,
-      secretsSources: [undefinedSource, nullSource],
+      secretsSources: [mockNullResolvingSource, mockSecretSource1], // Null resolving source, then valid source
       _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
     });
 
     expect(env.API_URL).toBe("https://required.com");
-    expect(env.SECRET_KEY).toBe("valid-process-key");
-    expect(env.FROM_SECRET_MANAGER_1).toBeUndefined();
-    expect(consoleWarnSpy).not.toHaveBeenCalled(); // Should still be handled silently at runtime
+    // Check value from process.env (highest precedence)
+    expect(env.SECRET_KEY).toBe("valid-process-key"); // *** CORRECTED EXPECTATION ***
+    // Check value from the valid secret source
+    expect(env.FROM_SECRET_MANAGER_1).toBe("secret-value-1"); // *** ADDED EXPECTATION ***
+    expect(consoleWarnSpy).not.toHaveBeenCalled(); // Should be handled silently
   });
 
-  it("should reject promise if a secret source function throws a synchronous error", async () => {
+  // --- CORRECTED Test ---
+  it("should warn if a secret source function returns non-promise", async () => {
+    // Branch: _fetchSecrets -> non-promise return
     setupProcessEnv({
       API_URL: "https://required.com",
-      SECRET_KEY: "valid-process-key",
+      SECRET_KEY: "valid-process-key", // process.env has highest precedence
     });
     mockDotenvFiles({});
-    const syncErrorSource: SecretSourceFunction = () => {
-      // This function throws synchronously, not returning a promise
-      throw new Error("Sync error inside source function");
-    };
 
-    // Promise.allSettled catches the sync error and turns it into a rejection
+    // Pass the problematic source function in the array for the test
+    const sources = [mockNonPromiseSource, mockSecretSource1];
+
+    const env = await createEnvAsync({
+      schema: testSchema,
+      secretsSources: sources,
+      _internalDotenvConfig: mockedDotenvConfig,
+      _internalDotenvExpand: mockedDotenvExpand,
+    });
+
+    // Should still succeed using process.env and other valid sources
+    expect(env.SECRET_KEY).toBe("valid-process-key"); // *** CORRECTED EXPECTATION ***
+    expect(env.FROM_SECRET_MANAGER_1).toBe("secret-value-1"); // *** KEPT EXPECTATION ***
+
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(1); // Should warn about non-promise return
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Sync return value from secrets source function at index 0. Function must return a Promise."
+      )
+    );
+  });
+
+  // --- CORRECTED Test ---
+  it("should resolve successfully if a source rejects with non-Error but validation passes", async () => {
+    // Branch: createEnvAsync -> catch block -> !(error instanceof Error) - THIS TEST NOW CHECKS RESOLUTION
+    setupProcessEnv({
+      API_URL: "https://required.com", // Provided by process.env
+      SECRET_KEY: "valid-process-key", // Provided by process.env
+    });
+    mockDotenvFiles({});
+    const nonErrorRejectionSource = () =>
+      Promise.reject("just a string rejection");
+
+    // Pass the problematic source function in the array for the test
+    const sources = [nonErrorRejectionSource];
+
+    // The promise should RESOLVE because validation passes using process.env
     await expect(
       createEnvAsync({
         schema: testSchema,
-        secretsSources: [syncErrorSource],
+        secretsSources: sources, // Use the sources array
         _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
       })
-    ).resolves.toBeDefined(); // The overall promise resolves as validation passes with process.env
+    ).resolves.toEqual(
+      expect.objectContaining({
+        API_URL: "https://required.com", // Check resolved value is from process.env
+        SECRET_KEY: "valid-process-key", // Check resolved value is from process.env
+      })
+    ); // *** CORRECTED EXPECTATION ***
 
-    // Check that the warning for the failed source was logged correctly
-    expect(consoleWarnSpy).toHaveBeenCalledTimes(2); // 1 for the specific failure, 1 for all failed
+    // Check that the correct warnings were logged
+    // Warning for the failed source
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        "Sync error in secrets source function at index 0: Sync error inside source function"
+        "Warning: Secrets source function at index 0 failed: just a string rejection"
       )
     );
+    // Warning for all sources failed
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
         "Warning: All 1 provided secretsSources functions failed"
       )
     );
+    // Should not have called console.error
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it("should THROW if schema is not a ZodObject (createEnvAsync)", async () => {
+    // Branch: createEnvAsync -> !(schema instanceof ZodObject)
+    setupProcessEnv({});
+    mockDotenvFiles({});
+    // Use await/rejects pattern for async function's sync throw
+    await expect(
+      createEnvAsync({
+        // @ts-expect-error - Deliberately passing invalid schema type
+        schema: z.string(), // Pass a non-object schema
+        _internalDotenvConfig: mockedDotenvConfig,
+        _internalDotenvExpand: mockedDotenvExpand,
+      })
+    ).rejects.toThrow("Invalid schema provided. Expected a ZodObject."); // Use rejects for async function
+
+    expect(mockedDotenvConfig).not.toHaveBeenCalled();
+    expect(mockedDotenvExpand).not.toHaveBeenCalled();
   });
 });
