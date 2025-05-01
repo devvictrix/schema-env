@@ -1,22 +1,31 @@
-# schema-env
-
 <p align="center">
-  <a href="https://badge.fury.io/js/schema-env"><img src="https://badge.fury.io/js/schema-env.svg" alt="npm version" /></a>
-  <img src="https://img.shields.io/badge/coverage-97%25-brightgreen.svg" alt="code coverage" />
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT license" /></a>
+  <a href="https://www.npmjs.com/package/schema-env">
+    <img src="https://img.shields.io/npm/v/schema-env.svg" alt="npm version" />
+  </a>
+  <a href="https://img.shields.io/npm/dm/schema-env.svg">
+    <img src="https://img.shields.io/npm/dm/schema-env.svg" alt="Downloads per month" />
+  </a>
+  <a href="https://github.com/devvictrix/schema-env/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/devvictrix/schema-env/ci.yml?branch=main" alt="Build Status" />
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT" />
+  </a>
+  <img src="https://img.shields.io/badge/coverage-97%25-brightgreen.svg" alt="Coverage" />
+  <img src="https://img.shields.io/badge/types-TypeScript-blue.svg" alt="TypeScript Support" />
 </p>
 
-> **TL;DR** Stop booting your app with missing / invalid env vars. `schema-env` validates them _before_ your code runs and gives you a fully‑typed object to consume.
+> **TL;DR** Stop booting your app with missing/invalid env vars. `schema-env` validates them _before_ your code runs and gives you a fully-typed object to consume.
 
 ---
 
 ## ✨ DX Highlights
 
-- **Fully type‑safe** – Zod schema ➜ inferred TS types.
-- **Fail‑fast** – throw on first mis‑configuration (sync) or reject (async).
-- **Zero‑magic loading** – predictable precedence &amp; opt‑in variable expansion.
-- **Secrets‑ready** – `createEnvAsync` fetches from Vault, AWS Secrets Manager, etc.
-- **Tiny footprint** – only `dotenv`, `dotenv-expand` (runtime) + peer `zod`.
+- **Fully type-safe** – Zod schema ➜ inferred TS types.
+- **Fail-fast** – throw on first mis-configuration (sync) or reject (async).
+- **Zero-magic loading** – predictable precedence & opt-in variable expansion.
+- **Secrets-ready** – `createEnvAsync` fetches from Vault, AWS Secrets Manager, etc.
+- **Tiny footprint** – only `dotenv`, `dotenv-expand` (runtime) + peer `zod`.
 
 ---
 
@@ -116,7 +125,7 @@ const fromVault: SecretSourceFunction = async () => ({
 | `dotEnvPath`      | `string \| string[] \| false` | `".env"` | Disable with `false`; array = load in order. |
 | `expandVariables` | `boolean`                     | `false`  | Uses `dotenv-expand` on files only.          |
 
-### Async‑only
+### Async-only
 
 | Option           | Type                     | Default | Notes                                                    |
 | ---------------- | ------------------------ | ------- | -------------------------------------------------------- |
@@ -145,12 +154,12 @@ const fromVault: SecretSourceFunction = async () => ({
 
 Browse `/examples` for runnable snippets:
 
-- **basic** – multiple files &amp; expansion
-- **express** – plug into an Express server
-- **async-secrets** – mock secret stores
+- **basic** – multiple files & expansion
+- **express** – plug into an Express server
+- **async-secrets** – mock secret stores
 
 ---
 
 ## License
 
-[MIT](https://opensource.org/licenses/MIT) – use, modify, profit. ✌️
+[MIT](https://opensource.org/licenses/MIT) – use, modify, profit. ✌️
