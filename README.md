@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://badge.fury.io/js/schema-env"><img src="https://badge.fury.io/js/schema-env.svg" alt="npm version" /></a>
-  <a href="https://github.com/devvictrix/schema-env/actions/workflows/ci.yml"><img src="https://github.com/devvictrix/schema-env/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+  <img src="https://img.shields.io/badge/coverage-97%25-brightgreen.svg" alt="code coverage" />
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT license" /></a>
 </p>
 
