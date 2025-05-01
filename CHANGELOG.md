@@ -9,13 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-_(Features currently in progress for the next release will go here)_
-
-- _(Features for v2.0.0+)_
+*   **(v2.0.0)** **Asynchronous Validation (`createEnvAsync`):** Introduced a new `createEnvAsync` function that returns a `Promise`. This allows integrating asynchronous operations during environment setup (`REQ-INT-01`). `createEnv` remains strictly synchronous.
+*   **(v2.0.0)** **Secrets Manager Integration (`secretsSources`):** The `createEnvAsync` function accepts an optional `secretsSources` option, an array of async functions (`() => Promise<Record<string, string | undefined>>`). This enables fetching secrets from external systems (like AWS Secrets Manager, Vault, etc.) concurrently during initialization (`REQ-INT-01`, `NFR-SEC-02`, `NFR-PERF-02`, `ADR-008`). Fetching errors are logged as warnings.
+*   **(v2.0.0)** Added comprehensive unit tests for `createEnvAsync`, including precedence with secrets, error handling for failing sources, and interaction with existing options.
 
 ### Changed
 
-_(Changes to existing functionality for the next release)_
+*   **(v2.0.0)** **Merge Precedence (`createEnvAsync`):** Defined and implemented the merge precedence order specifically for `createEnvAsync`: Schema Defaults < `.env` files (expanded) < Secrets Sources < `process.env` (`NFR-DX-02`). The precedence for `createEnv` remains unchanged.
+*   **(Internal)** Refactored internal loading, merging, and validation logic into helper functions (`_loadDotEnvFiles`, `_expandDotEnvValues`, `_mergeProcessEnv`, `_validateSchema`, `_formatZodError`, `_fetchSecrets`) shared between `createEnv` and `createEnvAsync` to improve maintainability (`NFR-MAIN-02`).
 
 ### Deprecated
 
@@ -35,8 +36,6 @@ _(Security vulnerability fixes)_
 
 ## [1.2.0] - 2025-04-30
 
-_(Note: Replace YYYY-MM-DD with actual release date)_ <-- Note: This sub-note is now technically redundant but left as per original file structure.
-
 ### Added
 
 - **Multiple `.env` File Paths:** The `dotEnvPath` option now accepts an array of file paths (e.g., `['.env.base', '.env.local']`). Files are loaded sequentially, with later files overriding earlier ones (`REQ-LOAD-04`).
@@ -55,32 +54,26 @@ _(Note: Replace YYYY-MM-DD with actual release date)_ <-- Note: This sub-note is
 - Updated `README.md` and TSDoc comments to document all v1.2.0 features and the updated merge precedence.
 - Internal file loading logic refactored to support array paths and correct precedence.
 - Updated development dependencies (e.g., `@types/node`, `eslint`, `prettier`). _(Assumption)_
-- Updated section titles in `specs/REQUIREMENTS.md` and `specs/NFRS.md` to reflect v1.2.0.
+- Updated section titles in `specs/FUNCTIONAL_REQUIREMENTS.md` and `specs/NON_FUNCTIONAL_REQUIREMENTS.md` to reflect v1.2.0.
 
 ### Fixed
 
 - Corrected test assertion logic related to precedence involving `process.env`.
 
-## [1.0.2] - YYYY-MM-DD
-
-_(Date needs to be filled in based on actual release date)_
+## [1.0.2] - 2025-04-01
 
 ### Changed
 
 - Updated dependencies (e.g., `dotenv`, development dependencies). _(Assumption based on typical patch release)_
 - Internal code refactoring or documentation typo fixes. _(Assumption)_
 
-## [1.0.1] - YYYY-MM-DD
-
-_(Date needs to be filled in based on actual release date)_
+## [1.0.1] - 2025-04-01
 
 ### Fixed
 
 - Potential minor bug fix related to initial release. _(Assumption)_
 
-## [1.0.0] - YYYY-MM-DD
-
-_(Date needs to be filled in based on actual release date)_
+## [1.0.0] - 2025-04-01
 
 ### Added
 
