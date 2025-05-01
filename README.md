@@ -124,10 +124,6 @@ See the [examples](./examples) directory for practical usage patterns:
 - `examples/basic`: Minimal setup.
 - `examples/express`: Integration with an Express.js server.
 
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
