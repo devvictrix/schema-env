@@ -8,15 +8,15 @@ Type-safe environment variable validation for Node.js using Zod schemas. Load `.
 
 ## Features
 
-*   **Type Safety:** Leverage Zod schemas to define and validate environment variables, including type coercion.
-*   **Standard `.env` Support:** Load variables from default (`.env`), environment-specific (`.env.development`), and custom file paths using `dotenv`.
-*   **Multiple File Loading:** Load configuration from an array of `.env` files (e.g., base + local overrides).
-*   **Variable Expansion:** Optionally expand variables within `.env` files (e.g., `DATABASE_URL=${DB_HOST}/${DB_NAME}`) using `dotenv-expand`.
-*   **Clear Precedence:** Predictable merging order: Schema Defaults < `.env` files < Secrets (async only) < `process.env`.
-*   **Strict Validation:** Fail-fast design throws an error on validation failure, preventing startup with invalid configuration.
-*   **Asynchronous Secrets Fetching (v2.0+):** Use `createEnvAsync` to fetch secrets from external systems during initialization.
-*   **Strong Typing:** Provides a fully typed environment object based on your Zod schema.
-*   **Minimal Dependencies:** Relies primarily on `dotenv` and `dotenv-expand` (with `zod` as a peer dependency).
+- **Type Safety:** Leverage Zod schemas to define and validate environment variables, including type coercion.
+- **Standard `.env` Support:** Load variables from default (`.env`), environment-specific (`.env.development`), and custom file paths using `dotenv`.
+- **Multiple File Loading:** Load configuration from an array of `.env` files (e.g., base + local overrides).
+- **Variable Expansion:** Optionally expand variables within `.env` files (e.g., `DATABASE_URL=${DB_HOST}/${DB_NAME}`) using `dotenv-expand`.
+- **Clear Precedence:** Predictable merging order: Schema Defaults < `.env` files < Secrets (async only) < `process.env`.
+- **Strict Validation:** Fail-fast design throws an error on validation failure, preventing startup with invalid configuration.
+- **Asynchronous Secrets Fetching (v2.0+):** Use `createEnvAsync` to fetch secrets from external systems during initialization.
+- **Strong Typing:** Provides a fully typed environment object based on your Zod schema.
+- **Minimal Dependencies:** Relies primarily on `dotenv` and `dotenv-expand` (with `zod` as a peer dependency).
 
 ## Installation
 
@@ -39,11 +39,16 @@ pnpm add schema-env zod dotenv dotenv-expand
     import { z } from "zod";
 
     export const envSchema = z.object({
-      NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+      NODE_ENV: z
+        .enum(["development", "production", "test"])
+        .default("development"),
       PORT: z.coerce.number().int().positive().default(3000),
       DATABASE_URL: z.string().url(),
       API_KEY: z.string().min(10),
-      LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional().default("info"),
+      LOG_LEVEL: z
+        .enum(["debug", "info", "warn", "error"])
+        .optional()
+        .default("info"),
     });
 
     // Optional: Infer the type for use in your app
@@ -88,16 +93,16 @@ pnpm add schema-env zod dotenv dotenv-expand
 
 ### `createEnv(options)`
 
-*   **Returns:** `z.infer<Schema>` (The typed environment object)
-*   **Behavior:** Synchronous. Loads, merges, optionally expands, and validates environment variables. Throws an error on validation failure or critical file loading errors.
-*   **`options`:**
-    *   `schema: ZodObject`: **Required.** Your Zod object schema defining the environment variables.
-    *   `dotEnvPath?: string | false | string[]`: Path(s) to `.env` file(s).
-        *   Default: `'./.env'`
-        *   `false`: Disable loading all `.env` files.
-        *   `string`: Path to a single `.env` file.
-        *   `string[]`: Array of paths. Loaded sequentially, later files override earlier ones.
-    *   `expandVariables?: boolean`: Enable variable expansion via `dotenv-expand`. Default: `false`. Applies only to values loaded from `.env` files.
+- **Returns:** `z.infer<Schema>` (The typed environment object)
+- **Behavior:** Synchronous. Loads, merges, optionally expands, and validates environment variables. Throws an error on validation failure or critical file loading errors.
+- **`options`:**
+  - `schema: ZodObject`: **Required.** Your Zod object schema defining the environment variables.
+  - `dotEnvPath?: string | false | string[]`: Path(s) to `.env` file(s).
+    - Default: `'./.env'`
+    - `false`: Disable loading all `.env` files.
+    - `string`: Path to a single `.env` file.
+    - `string[]`: Array of paths. Loaded sequentially, later files override earlier ones.
+  - `expandVariables?: boolean`: Enable variable expansion via `dotenv-expand`. Default: `false`. Applies only to values loaded from `.env` files.
 
 ## Asynchronous Validation with `createEnvAsync` (v2.0+)
 
@@ -124,48 +129,55 @@ const getDbSecrets: SecretSourceFunction = async () => {
   // Replace with your actual SDK call to AWS Secrets Manager, Vault, etc.
   // Handle authentication securely within this function.
   console.log("Fetching DB secrets...");
-  await new Promise(res => setTimeout(res, 50)); // Simulate delay
+  await new Promise((res) => setTimeout(res, 50)); // Simulate delay
   // Return undefined for keys not found by this source
-  return { DATABASE_PASSWORD: "aws-db-password-123", API_ENDPOINT: "https://db-secrets.example.com/api" };
+  return {
+    DATABASE_PASSWORD: "aws-db-password-123",
+    API_ENDPOINT: "https://db-secrets.example.com/api",
+  };
 };
 
 const getPaymentSecrets: SecretSourceFunction = async () => {
   console.log("Fetching Payment secrets...");
-  await new Promise(res => setTimeout(res, 30)); // Simulate delay
+  await new Promise((res) => setTimeout(res, 30)); // Simulate delay
   // This source might override API_ENDPOINT from the previous one
-  return { STRIPE_API_KEY: "sk_test_abcdefg12345", API_ENDPOINT: "https://payment-secrets.example.com/api" };
+  return {
+    STRIPE_API_KEY: "sk_test_abcdefg12345",
+    API_ENDPOINT: "https://payment-secrets.example.com/api",
+  };
 };
 
 const failingSource: SecretSourceFunction = async () => {
   console.log("Attempting failing source...");
-  await new Promise((_, rej) => setTimeout(() => rej(new Error("Network Error")), 20));
+  await new Promise((_, rej) =>
+    setTimeout(() => rej(new Error("Network Error")), 20)
+  );
   return {}; // Should not be reached
-}
+};
 
 async function initializeApp() {
   try {
     const env = await createEnvAsync({
       schema: envSchema,
       // Optionally load .env files first
-      dotEnvPath: ['.env.base', '.env.development'],
+      dotEnvPath: [".env.base", ".env.development"],
       expandVariables: false, // Expansion only applies to .env files
       secretsSources: [
-        getDbSecrets,        // Fetched concurrently
-        getPaymentSecrets,   // Fetched concurrently
-        failingSource        // Errors are caught and logged as warnings
+        getDbSecrets, // Fetched concurrently
+        getPaymentSecrets, // Fetched concurrently
+        failingSource, // Errors are caught and logged as warnings
       ],
     });
 
     // env is fully typed and validated, including secrets
     console.log(`Initialization successful for NODE_ENV=${env.NODE_ENV}`);
     console.log(`Using Port: ${env.PORT}`);
-    console.log(`DB Password loaded: ${env.DATABASE_PASSWORD ? 'Yes' : 'No'}`);
-    console.log(`Stripe Key loaded: ${env.STRIPE_API_KEY ? 'Yes' : 'No'}`);
+    console.log(`DB Password loaded: ${env.DATABASE_PASSWORD ? "Yes" : "No"}`);
+    console.log(`Stripe Key loaded: ${env.STRIPE_API_KEY ? "Yes" : "No"}`);
     console.log(`Final API Endpoint: ${env.API_ENDPOINT}`); // Value from getPaymentSecrets wins
 
     // Start your application...
     // startServer(env);
-
   } catch (error) {
     // Validation errors or fatal setup errors cause rejection
     console.error("❌ Application failed to initialize:", error);
@@ -178,13 +190,13 @@ initializeApp();
 
 ### `createEnvAsync(options)`
 
-*   **Returns:** `Promise<z.infer<Schema>>`
-*   **Behavior:** Asynchronous. Loads `.env` files, fetches secrets, merges sources, validates against the schema. Resolves with the validated environment object on success, rejects on validation failure or fatal setup errors (like non-ENOENT file load errors).
-*   **Options:** Accepts the same options as `createEnv`, plus:
-    *   `secretsSources?: SecretSourceFunction[]`: An array of asynchronous functions. Each function must:
-        *   Take no arguments.
-        *   Return a `Promise<Record<string, string | undefined>>`. The resolved record should contain the fetched secret names and their string values. Use `undefined` for secrets not found by that source.
-        *   Handle its own authentication and error handling internally. If a source fails (promise rejects or throws), a warning is logged, but `createEnvAsync` continues processing other sources. If *all* sources fail, a final warning is logged, and validation proceeds with only `.env` and `process.env` data.
+- **Returns:** `Promise<z.infer<Schema>>`
+- **Behavior:** Asynchronous. Loads `.env` files, fetches secrets, merges sources, validates against the schema. Resolves with the validated environment object on success, rejects on validation failure or fatal setup errors (like non-ENOENT file load errors).
+- **Options:** Accepts the same options as `createEnv`, plus:
+  - `secretsSources?: SecretSourceFunction[]`: An array of asynchronous functions. Each function must:
+    - Take no arguments.
+    - Return a `Promise<Record<string, string | undefined>>`. The resolved record should contain the fetched secret names and their string values. Use `undefined` for secrets not found by that source.
+    - Handle its own authentication and error handling internally. If a source fails (promise rejects or throws), a warning is logged, but `createEnvAsync` continues processing other sources. If _all_ sources fail, a final warning is logged, and validation proceeds with only `.env` and `process.env` data.
 
 ## Loading Logic & Precedence
 
@@ -194,18 +206,18 @@ Variables are collected and merged from different sources before validation. The
 
 1.  **Schema Defaults:** Lowest priority, applied by Zod during parsing if a key is missing or `undefined` in the final merged input.
 2.  **`.env` Files:** Loaded according to `dotEnvPath` and `NODE_ENV`.
-    *   Files in `dotEnvPath` array (later override earlier).
-    *   Single `dotEnvPath` file.
-    *   Default `./.env`.
-    *   Environment-specific file (`.env.${NODE_ENV}`) overrides files above.
-    *   Variable expansion (`expandVariables: true`) applies to the combined values from *all* loaded `.env` files at this stage.
+    - Files in `dotEnvPath` array (later override earlier).
+    - Single `dotEnvPath` file.
+    - Default `./.env`.
+    - Environment-specific file (`.env.${NODE_ENV}`) overrides files above.
+    - Variable expansion (`expandVariables: true`) applies to the combined values from _all_ loaded `.env` files at this stage.
 3.  **`process.env`:** Highest priority. Values in `process.env` override values from all other sources.
 
 ### `createEnvAsync` (Asynchronous) Precedence
 
 1.  **Schema Defaults:** Lowest priority.
 2.  **`.env` Files:** Same loading and expansion logic as `createEnv`.
-3.  **Secrets Sources:** Values resolved successfully from the functions provided in the `secretsSources` array. If multiple sources provide the same key, the value from the *later* function in the array takes precedence. Secrets override `.env` files.
+3.  **Secrets Sources:** Values resolved successfully from the functions provided in the `secretsSources` array. If multiple sources provide the same key, the value from the _later_ function in the array takes precedence. Secrets override `.env` files.
 4.  **`process.env`:** Highest priority. Overrides values from all other sources, including Secrets Sources.
 
 ## Error Handling
@@ -220,15 +232,15 @@ This ensures your application does not start with an invalid environment configu
 
 File loading errors (other than a file simply not existing - `ENOENT`) will also cause a synchronous `Error` to be thrown immediately by either function.
 
-Errors within `secretsSources` functions for `createEnvAsync` are logged as warnings, and processing continues unless *all* sources fail (in which case a final warning is logged before attempting validation with other available sources).
+Errors within `secretsSources` functions for `createEnvAsync` are logged as warnings, and processing continues unless _all_ sources fail (in which case a final warning is logged before attempting validation with other available sources).
 
 ## Examples
 
 See the `/examples` directory for practical usage patterns:
 
-*   `/examples/basic`: Demonstrates core features, multiple `.env` files, and expansion.
-*   `/examples/express`: Shows integration with an Express.js application.
-*   `/examples/async-secrets`: Demonstrates fetching mock secrets using createEnvAsync and secretsSources.
+- `/examples/basic`: Demonstrates core features, multiple `.env` files, and expansion.
+- `/examples/express`: Shows integration with an Express.js application.
+- `/examples/async-secrets`: Demonstrates fetching mock secrets using createEnvAsync and secretsSources.
 
 ## License
 

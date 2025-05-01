@@ -28,8 +28,10 @@ type DotenvExpandFunction = (config: DotenvConfigOutput) => DotenvConfigOutput;
 
 // --- Mocks ---
 // Mock console methods BEFORE tests run
-const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => { });
-const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => { });
+const consoleErrorSpy = jest
+  .spyOn(console, "error")
+  .mockImplementation(() => {});
+const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 
 const mockedDotenvConfig = jest.fn<DotenvConfigFunction>();
 
@@ -1156,10 +1158,14 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
     });
     mockDotenvFiles({});
     const nonObjectSource: SecretSourceFunction = async () => {
-      return "not-an-object" as any; // Simulate incorrect return type
+      // Simulate incorrect return type, satisfying the linter
+      return "not-an-object" as unknown as Record<string, string | undefined>;
     };
     const nullSource: SecretSourceFunction = async () => {
-      return null as any;
+      // Simulate incorrect return type (null), satisfying the linter
+      // Note: Returning null/undefined *values* in the Record is fine,
+      // this tests returning null *instead* of a Record.
+      return null as unknown as Record<string, string | undefined>;
     };
     const validSource: SecretSourceFunction = async () => ({
       FROM_SECRET_MANAGER_1: "valid-value",

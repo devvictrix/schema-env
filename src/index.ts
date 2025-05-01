@@ -67,7 +67,7 @@ interface CreateEnvBaseOptions<T extends ZodSchema> {
  * Options specific to the synchronous `createEnv` function.
  */
 export interface CreateEnvOptions<T extends ZodSchema>
-  extends CreateEnvBaseOptions<T> { }
+  extends CreateEnvBaseOptions<T> {}
 
 /**
  * Options specific to the asynchronous `createEnvAsync` function.
@@ -339,9 +339,10 @@ async function _fetchSecrets(
     } else {
       // Log warning on rejection (async error or caught sync error)
       console.warn(
-        `⚠️ [schema-env] Warning: Secrets source function at index ${index} failed: ${result.reason instanceof Error
-          ? result.reason.message
-          : String(result.reason)
+        `⚠️ [schema-env] Warning: Secrets source function at index ${index} failed: ${
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason)
         }`
       );
     }
@@ -480,30 +481,21 @@ export async function createEnvAsync<T extends ZodSchema>(
     throw new Error("Invalid schema provided. Expected a ZodObject.");
   }
 
-  // Execute potentially throwing sync operations first
-  // These operations can throw synchronously, which is expected behavior
-  // for configuration errors detected before async operations begin.
-  let mergedDotEnvParsed: dotenv.DotenvParseOutput;
-  let expandedDotEnvValues: dotenv.DotenvParseOutput;
-  try {
-    // 1. Load .env files (respecting NODE_ENV) - Can throw sync on non-ENOENT fs errors
-    mergedDotEnvParsed = _loadDotEnvFiles(
-      dotEnvPath,
-      process.env.NODE_ENV,
-      _internalDotenvConfig
-    );
-
-    // 2. Expand .env values if enabled - Can log sync errors but shouldn't throw
-    expandedDotEnvValues = _expandDotEnvValues(
-      mergedDotEnvParsed,
-      expandVariables,
-      _internalDotenvExpand
-    );
-  } catch (syncError) {
-    // If synchronous loading/expansion fails, we throw immediately.
-    // No need to proceed to async operations.
-    throw syncError;
-  }
+  // --- Synchronous Operations ---
+  // Any synchronous errors thrown here (e.g., non-ENOENT fs errors during load)
+  // will naturally cause the promise returned by createEnvAsync to reject.
+  // 1. Load .env files (respecting NODE_ENV)
+  const mergedDotEnvParsed: dotenv.DotenvParseOutput = _loadDotEnvFiles(
+    dotEnvPath,
+    process.env.NODE_ENV,
+    _internalDotenvConfig
+  );
+  // 2. Expand .env values if enabled
+  const expandedDotEnvValues: dotenv.DotenvParseOutput = _expandDotEnvValues(
+    mergedDotEnvParsed,
+    expandVariables,
+    _internalDotenvExpand
+  );
 
   // Now handle the async part
   try {

@@ -1,21 +1,21 @@
 {
-    "name": "schema-env-example-async-secrets",
-    "version": "1.0.0",
-    "description": "Example using createEnvAsync with mock secret sources",
-    "type": "module",
-    "main": "index.ts",
-    "scripts": {
-      "start": "ts-node index.ts"
-    },
-    "dependencies": {
-      "schema-env": "file:../..",
-      "zod": "^3.24.3"
-    },
-    "devDependencies": {
-      "@types/node": "^22.15.0",
-      "ts-node": "^10.9.2",
-      "typescript": "^5.8.3"
-    },
-    "author": "",
-    "license": "MIT"
-  }
+  "name": "schema-env-example-async-secrets",
+  "version": "1.0.0",
+  "description": "Example using createEnvAsync with mock secret sources",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts"
+  },
+  "dependencies": {
+    "schema-env": "file:../..",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "author": "",
+  "license": "MIT"
+}
