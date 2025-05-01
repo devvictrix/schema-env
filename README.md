@@ -5,9 +5,6 @@
   <a href="https://img.shields.io/npm/dm/schema-env.svg">
     <img src="https://img.shields.io/npm/dm/schema-env.svg" alt="Downloads per month" />
   </a>
-  <a href="https://github.com/devvictrix/schema-env/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/devvictrix/schema-env/ci.yml?branch=main" alt="Build Status" />
-  </a>
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT" />
   </a>
