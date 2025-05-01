@@ -1,7 +1,5 @@
 # schema-env
 
-<p align="center"><strong>Safe, typed &amp; predictable **.env** handling for Node.js + TypeScript — powered by Zod.</strong></p>
-
 <p align="center">
   <a href="https://badge.fury.io/js/schema-env"><img src="https://badge.fury.io/js/schema-env.svg" alt="npm version" /></a>
   <img src="https://img.shields.io/badge/coverage-97%25-brightgreen.svg" alt="code coverage" />
