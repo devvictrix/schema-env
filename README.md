@@ -31,7 +31,7 @@ npm i schema-env zod dotenv dotenv-expand   # npm
 # pnpm add schema-env zod dotenv dotenv-expand
 ```
 
-> **Peer dep notice** — `zod` is declared as a *peer* dependency; make sure it is installed in your project.
+> **Peer dep notice** — `zod` is declared as a _peer_ dependency; make sure it is installed in your project.
 
 ---
 
@@ -41,10 +41,12 @@ npm i schema-env zod dotenv dotenv-expand   # npm
 import { z } from "zod";
 
 export const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  PORT:      z.coerce.number().int().positive().default(3000),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
+  PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().url(),
-  API_KEY:   z.string().min(10),
+  API_KEY: z.string().min(10),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 export type Env = z.infer<typeof envSchema>;
@@ -80,11 +82,13 @@ import { z } from "zod";
 
 const schema = z.object({
   DB_PASSWORD: z.string(),
-  STRIPE_KEY:  z.string().startsWith("sk_"),
+  STRIPE_KEY: z.string().startsWith("sk_"),
 });
 
 const fromAws: SecretSourceFunction = async () => ({ DB_PASSWORD: "aws‑pwd" });
-const fromVault: SecretSourceFunction = async () => ({ STRIPE_KEY: "sk_test_123" });
+const fromVault: SecretSourceFunction = async () => ({
+  STRIPE_KEY: "sk_test_123",
+});
 
 (async () => {
   const env = await createEnvAsync({
@@ -101,24 +105,24 @@ const fromVault: SecretSourceFunction = async () => ({ STRIPE_KEY: "sk_test_123"
 
 ## API Overview
 
-| Function | Sync? | Description |
-|----------|-------|-------------|
-| `createEnv(options)` | ✅ | Load `.env` → merge → validate → return typed config. Throws on error. |
-| `createEnvAsync(options)` | ❌ | Same as above + concurrent `secretsSources`. Resolves with config or rejects. |
+| Function                  | Sync? | Description                                                                   |
+| ------------------------- | ----- | ----------------------------------------------------------------------------- |
+| `createEnv(options)`      | ✅    | Load `.env` → merge → validate → return typed config. Throws on error.        |
+| `createEnvAsync(options)` | ❌    | Same as above + concurrent `secretsSources`. Resolves with config or rejects. |
 
 ### Shared `options`
 
-| Option | Type | Default | Notes |
-|--------|------|---------|-------|
-| `schema` | `ZodObject` | — | **Required**. Your contract. |
-| `dotEnvPath` | `string \| string[] \| false` | `".env"` | Disable with `false`; array = load in order. |
-| `expandVariables` | `boolean` | `false` | Uses `dotenv-expand` on files only. |
+| Option            | Type                          | Default  | Notes                                        |
+| ----------------- | ----------------------------- | -------- | -------------------------------------------- |
+| `schema`          | `ZodObject`                   | —        | **Required**. Your contract.                 |
+| `dotEnvPath`      | `string \| string[] \| false` | `".env"` | Disable with `false`; array = load in order. |
+| `expandVariables` | `boolean`                     | `false`  | Uses `dotenv-expand` on files only.          |
 
 ### Async‑only
 
-| Option | Type | Default | Notes |
-|--------|------|---------|-------|
-| `secretsSources` | `SecretSourceFunction[]` | `[]` | Fetched **in parallel**; later sources win on key clash. |
+| Option           | Type                     | Default | Notes                                                    |
+| ---------------- | ------------------------ | ------- | -------------------------------------------------------- |
+| `secretsSources` | `SecretSourceFunction[]` | `[]`    | Fetched **in parallel**; later sources win on key clash. |
 
 ---
 
@@ -133,9 +137,9 @@ const fromVault: SecretSourceFunction = async () => ({ STRIPE_KEY: "sk_test_123"
 
 ## Error Handling
 
-- Validation issues ➜ *pretty Zod report* + throw/reject.
+- Validation issues ➜ _pretty Zod report_ + throw/reject.
 - Missing file (`ENOENT`) is ignored; other I/O errors are fatal.
-- A failing `secretsSource` logs a warning; proceeds unless *all* sources fail.
+- A failing `secretsSource` logs a warning; proceeds unless _all_ sources fail.
 
 ---
 
@@ -152,4 +156,3 @@ Browse `/examples` for runnable snippets:
 ## License
 
 [MIT](https://opensource.org/licenses/MIT) – use, modify, profit. ✌️
-
