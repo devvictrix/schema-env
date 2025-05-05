@@ -5,11 +5,10 @@
   "type": "module",
   "main": "index.ts",
   "scripts": {
-    "start": "ts-node index.ts"
+    "start": "node --loader ts-node/esm index.ts"
   },
   "dependencies": {
-    "schema-env": "file:../..",
-    "zod": "^3.24.3"
+    "schema-env": "file:../.."
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

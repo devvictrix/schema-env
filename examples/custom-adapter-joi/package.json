@@ -5,13 +5,12 @@
   "type": "module",
   "main": "index.ts",
   "scripts": {
-    "start": "ts-node index.ts",
-    "start:fail": "FAIL_VALIDATION=true ts-node index.ts"
+    "start": "node --loader ts-node/esm index.ts",
+    "start:fail": "FAIL_VALIDATION=true node --loader ts-node/esm index.ts"
   },
   "dependencies": {
     "joi": "^17.13.3",
-    "schema-env": "file:../..",
-    "zod": "^3.24.3"
+    "schema-env": "file:../.."
   },
   "devDependencies": {
     "@types/joi": "^17.2.3",

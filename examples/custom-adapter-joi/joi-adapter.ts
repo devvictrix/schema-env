@@ -21,6 +21,7 @@ export class JoiValidatorAdapter<TResult> implements ValidatorAdapter<TResult> {
       abortEarly: false,
       allowUnknown: true, // Necessary because schema-env passes the fully merged env
       convert: true,
+      stripUnknown: true,
     });
 
     if (!result.error) {

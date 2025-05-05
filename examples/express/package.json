@@ -5,15 +5,14 @@
   "type": "module",
   "main": "src/server.ts",
   "scripts": {
-    "start": "ts-node src/server.ts",
-    "dev": "NODE_ENV=development ts-node src/server.ts",
+    "start": "node --loader ts-node/esm src/server.ts",
+    "dev": "NODE_ENV=development node --loader ts-node/esm src/server.ts",
     "build": "echo 'No build step needed for this simple example'"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "schema-env": "file:../..",
-    "zod": "^3.24.3"
+    "schema-env": "file:../.."
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

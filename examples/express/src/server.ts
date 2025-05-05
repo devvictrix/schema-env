@@ -4,7 +4,7 @@ import cors from "cors";
 // and the file:../.. link working after npm install in examples/express
 import { createEnv } from "schema-env";
 // Use .ts extension for local import when using ts-node
-import { envSchema, Env } from "./env.ts";
+import { envSchema, Env } from "./env.js"; // Use .js extension
 
 let env: Env;
 
