@@ -1,7 +1,7 @@
 {
   "name": "schema-env",
   "type": "module",
-  "version": "2.0.8",
+  "version": "2.1.0",
   "description": "Type-safe environment variable validation for Node.js using Zod schemas. Load .env files and validate process.env at startup.",
   "keywords": [
     "env",
@@ -58,7 +58,8 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "validate": "npm run format:check && npm run lint && npm test",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run format:check && npm run lint && npm run typecheck && npm test",
     "prepublishOnly": "npm run validate && npm run build"
   },
   "dependencies": {

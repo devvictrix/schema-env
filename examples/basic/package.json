@@ -5,14 +5,13 @@
   "type": "module",
   "main": "index.ts",
   "scripts": {
-    "start": "ts-node index.ts",
-    "dev": "NODE_ENV=development ts-node index.ts",
-    "prod": "TARGET=ProdUser NODE_ENV=production ts-node index.ts",
-    "local": "TARGET=LocalUser ts-node index.ts"
+    "start": "node --loader ts-node/esm index.ts",
+    "dev": "NODE_ENV=development node --loader ts-node/esm index.ts",
+    "prod": "TARGET=ProdUser NODE_ENV=production node --loader ts-node/esm index.ts",
+    "local": "TARGET=LocalUser node --loader ts-node/esm index.ts"
   },
   "dependencies": {
-    "schema-env": "file:../..",
-    "zod": "^3.24.3"
+    "schema-env": "file:../.."
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
