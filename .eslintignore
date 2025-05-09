@@ -8,3 +8,4 @@ coverage
 !/.env.example
 *.cjs
 examples/
+posts/

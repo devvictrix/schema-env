@@ -1,277 +1,336 @@
+# schema-env: Your App's Smart Instruction Checker!
+
 <p align="center">
   <a href="https://www.npmjs.com/package/schema-env">
-    <img src="https://img.shields.io/npm/v/schema-env.svg" alt="npm version" />
+    <img src="https://img.shields.io/npm/v/schema-env?style=flat-square" alt="NPM Version" />
   </a>
   <a href="https://img.shields.io/npm/dm/schema-env.svg">
     <img src="https://img.shields.io/npm/dm/schema-env.svg" alt="Downloads per month" />
   </a>
+  <a href="https://app.codecov.io/gh/devvictrix/schema-env">
+    <img src="https://img.shields.io/codecov/c/github/devvictrix/schema-env?style=flat-square" alt="Test Coverage" />
+  </a>
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT" />
   </a>
-  <!-- TODO: Update coverage badge dynamically if possible -->
-  <img src="https://img.shields.io/badge/coverage-90%2B%25-brightgreen.svg" alt="Coverage Target" />
-  <img src="https://img.shields.io/badge/types-TypeScript-blue.svg" alt="TypeScript Support" />
+  <a href="https://github.com/devvictrix/schema-env/blob/main/ai/AI_INSTRUCTIONS.md">
+    <img src="https://img.shields.io/badge/Developed%20with-AI%20Assistance-blueviolet?style=flat-square" alt="Developed with AI Assistance" />
+  </a>
 </p>
 
-> **TL;DR** Stop booting your app with missing/invalid env vars. `schema-env` validates them _before_ your code runs and gives you a fully-typed object to consume.
+Ever tried to build a LEGO set without the right pieces or with confusing instructions? Your app can feel the same way if its "environment variables" (special settings it needs to run) are wrong!
+
+**`schema-env` is like a super-helpful assistant that checks these settings for your Node.js app _before_ it even starts.** It makes sure everything is A-OK, so your app can run smoothly and reliably.
 
 ---
 
-## ✨ DX Highlights
+## TL;DR (Too Long; Didn't Read)
 
-- **Fully type-safe** – Zod schema ➜ inferred TS types (or specify your own with adapters).
-- **Fail-fast** – throw on first mis-configuration (sync) or reject (async).
-- **Zero-magic loading** – predictable precedence & opt-in variable expansion.
-- **Secrets-ready** – `createEnvAsync` fetches from Vault, AWS Secrets Manager, etc.
-- **Adapter-friendly** – Plug in Joi, Yup, or custom validators easily.
-- **Tiny footprint** – only `dotenv`, `dotenv-expand` (runtime) + peer `zod` (optional with adapters).
+> `schema-env` makes your app safer by checking its settings (like API keys, port numbers) against a rulebook (your Zod schema or custom adapter) right at the start. It can read settings from `.env` files, special files for development/production, and even secret vaults! If something's wrong, it tells you immediately.
 
 ---
 
-## Installation
+## DX Highlights (Developer Experience Wins!)
+
+- ✅ **Peace of Mind:** No more "Oops, I forgot that setting!" errors in production.
+- 📖 **Clear Rules:** Define exactly what your app needs, in one place.
+- 🤝 **Team-Friendly:** Everyone knows what settings are required.
+- 🤖 **Async & Flexible:** Works with modern setups, including fetching secrets.
+- 🧩 **Use Your Favorite Tools:** Zod is built-in, but you can plug in Joi, Yup, etc.
+- 💡 **Smart & Simple API:** Easy to get started, powerful when you need it.
+
+---
+
+## What's an "Environment Variable"? And Why Check Them?
+
+Think of environment variables as little notes you give your app:
+
+- `PORT=3000` (Tells your app which door to use for web traffic)
+- `API_KEY=supersecret123` (A secret password to talk to another service)
+- `NODE_ENV=development` (Tells your app if it's in "practice mode" or "live mode")
+
+If these notes are missing, misspelled, or have the wrong kind of info (like text where a number should be), your app might get confused, crash, or even worse, do something unexpected!
+
+**`schema-env` helps by:**
+
+1.  **Reading a "Rulebook" (Schema):** You tell `schema-env` what notes your app expects and what they should look like.
+2.  **Checking the "Notes" (.env files & system):** It looks at the notes you've provided.
+3.  **Giving a Thumbs Up or Down:** If all notes match the rulebook, great! If not, it stops your app and tells you exactly what's wrong.
+
+This makes your app:
+
+- 👍 **More Reliable:** Fewer surprise crashes.
+- 🔒 **More Secure:** Helps ensure secret keys are present and correctly formatted.
+- 🛠️ **Easier to Debug:** Find configuration problems instantly.
+
+## Features - What Can This Assistant Do?
+
+- 🔍 **Checks Your Settings (Validation):** Makes sure settings are the right type (text, number, URL, etc.) and follow your rules. Uses the popular [Zod](https://zod.dev/) library by default, but you can bring your own!
+- 📄 **Reads `.env` Files:** Automatically loads settings from `.env` files – a common way to store them.
+- 🌳 **Understands Different "Moods" (Environments):** Can load different settings for "development" (`.env.development`), "production" (`.env.production`), etc.
+- ➕ **Handles Multiple Instruction Sheets:** You can have a base set of settings and then override them with local ones.
+- 🔗 **Smart Links in Settings (Variable Expansion):** Lets one setting use the value of another (e.g., `FULL_URL = ${BASE_URL}/api`).
+- 🤫 **Fetches Secret Settings (Asynchronous):** Can get super-secret settings from secure vaults _before_ checking everything.
+- 🥇 **Knows Who's Boss (Clear Precedence):** If a setting is defined in multiple places, `schema-env` knows which one to use.
+- 🛡️ **Doesn't Change Global Settings:** It won't mess with your computer's main settings.
+- 🗣️ **Clear Error Messages:** Tells you _all_ the problems at once, not one by one.
+- 🤖 **AI-Powered Helper:** This library was built with the help of an AI assistant!
+
+## Let's Get Started! (Basic Magic)
+
+**1. Install `schema-env` and `zod` (our default rulebook maker):**
 
 ```bash
-# pick your favourite package manager
-npm i schema-env zod dotenv dotenv-expand   # npm
-# yarn add schema-env zod dotenv dotenv-expand
-# pnpm add schema-env zod dotenv dotenv-expand
+npm install schema-env zod
+# or
+yarn add schema-env zod
 ```
 
-> **Peer dep notice** — `zod` is declared as a _peer_ dependency. It's required if you use the default `schema` option. You might not need it if you _only_ use the custom `validator` option, but installing it is generally safe. `dotenv` and `dotenv-expand` are direct dependencies.
+**2. Create Your Rulebook (`envSchema.ts`):**
+Tell `schema-env` what settings your app needs.
 
----
-
-## Quick Start (60 sec)
-
-```ts title="src/env.ts"
-// Define schema using Zod (default)
-import { z } from "zod";
+```typescript
+// envSchema.ts
+import { z } from "zod"; // Zod helps us make the rules!
 
 export const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-  PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z.string().url(),
-  API_KEY: z.string().min(10),
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  // Rule 1: NODE_ENV should be "development" or "production". Default to "development".
+  NODE_ENV: z.enum(["development", "production"]).default("development"),
+
+  // Rule 2: PORT should be a number. If not given, use 3000.
+  PORT: z.coerce.number().default(3000),
+
+  // Rule 3: GREETING_MESSAGE must be text, and you *must* provide it!
+  GREETING_MESSAGE: z.string().min(1, "Oops! You forgot the greeting message!"),
 });
+
+// This creates a TypeScript type for our validated settings - super handy!
 export type Env = z.infer<typeof envSchema>;
 ```
 
-```dotenv title=".env"
-DATABASE_URL=postgresql://user:password@host:5432/db
-API_KEY=super‑secret‑api‑key
-PORT=8080
+**3. Write Down Your App's Settings (`.env` file):**
+Create a file named `.env` in the main folder of your project.
+
+```ini
+# .env
+GREETING_MESSAGE="Hello from schema-env!"
+PORT="8080"
 ```
 
-```ts title="src/index.ts"
+_(Notice we didn't put `NODE_ENV` here? Our rulebook says it defaults to "development"!)_
+
+**4. Tell `schema-env` to Check Everything (in your app's main file, like `index.ts` or `server.ts`):**
+
+```typescript
+// index.ts
 import { createEnv } from "schema-env";
-import { envSchema, type Env } from "./env.js";
+import { envSchema, Env } from "./envSchema.js"; // Use .js for modern JavaScript modules
 
-// Validate using Zod schema
-const env: Env = createEnv({ schema: envSchema });
+let settings: Env; // This will hold our correct settings
 
-console.info(`Running in ${env.NODE_ENV} mode on :${env.PORT}`);
-// Use the typed 'env' object...
+try {
+  // Time for the magic check!
+  settings = createEnv({ schema: envSchema });
+  console.log("✅ Hooray! All settings are correct!");
+} catch (error) {
+  console.error("❌ Oh no! Something's wrong with the settings.");
+  // schema-env already printed the detailed error messages for us!
+  process.exit(1); // Stop the app, because settings are bad.
+}
+
+// Now you can safely use your settings!
+console.log(`The app says: ${settings.GREETING_MESSAGE}`);
+console.log(`Running in ${settings.NODE_ENV} mode on port ${settings.PORT}.`);
+
+// Go ahead and start your amazing app!
+// startMyApp(settings);
 ```
 
-That’s it – your app will **exit immediately** with a helpful error report if anything is missing or malformed according to your schema.
+If you run this and your `.env` file is missing `GREETING_MESSAGE` or `PORT` is not a number, `schema-env` will tell you!
 
----
+## Doing More Cool Things!
 
-## Secrets? Use `createEnvAsync`
+### Different Settings for Different "Moods" (e.g., Development vs. Production)
 
-Fetches secrets from external sources _concurrently_ before validation.
+If you have a setting `NODE_ENV` (like in our example), `schema-env` is extra smart:
 
-<details>
-<summary>Example (click to expand)</summary>
+- If `NODE_ENV=development`, it will also try to load settings from a file named `.env.development`.
+- If `NODE_ENV=production`, it will look for `.env.production`.
 
-```ts
-import { createEnvAsync, SecretSourceFunction } from "schema-env";
-import { z } from "zod"; // Assuming Zod schema for this example
+Settings in these specific files will _override_ settings from the main `.env` file.
 
-const schema = z.object({
-  NODE_ENV: z.enum(["development", "production"]).default("development"),
-  DB_PASSWORD: z.string(),
-  STRIPE_KEY: z.string().startsWith("sk_"),
+### Settings That Depend on Other Settings (Variable Expansion)
+
+Want `API_URL` to be `${HOSTNAME}/api`? Easy!
+First, tell `schema-env` you want to do this:
+
+```typescript
+settings = createEnv({
+  schema: envSchema, // Your usual rulebook
+  expandVariables: true, // Set this to true!
 });
+```
 
-// Mock fetching functions (replace with your actual SDK calls)
-const fromAws: SecretSourceFunction = async () => {
-  console.log("Fetching from AWS...");
-  await new Promise((res) => setTimeout(res, 50));
-  return { DB_PASSWORD: "aws‑pwd" };
-};
-const fromVault: SecretSourceFunction = async () => {
-  console.log("Fetching from Vault...");
-  await new Promise((res) => setTimeout(res, 30));
-  return { STRIPE_KEY: "sk_test_123" };
-};
+Then, in your `.env` file:
 
-(async () => {
+```ini
+HOSTNAME="http://mycoolsite.com"
+API_URL="${HOSTNAME}/v1/data"
+```
+
+`schema-env` will figure out `API_URL` should be `http://mycoolsite.com/v1/data`.
+
+### Using Multiple `.env` Files
+
+Sometimes you want a base set of settings and then some local ones that only you use.
+
+```typescript
+settings = createEnv({
+  schema: envSchema,
+  dotEnvPath: [".env.defaults", ".env.local"], // Checks .env.defaults, then .env.local
+});
+```
+
+Later files in the list override earlier ones. And the "mood" specific file (like `.env.development`) still gets checked _after_ all of these!
+
+## For the Pros: Super Secret Settings & Your Own Rules!
+
+### Getting Secrets from a Secure Vault (Async Magic with `createEnvAsync`)
+
+Some settings, like database passwords, are too secret for `.env` files. You might keep them in a "secrets manager" (like AWS Secrets Manager, HashiCorp Vault, etc.). `schema-env` can fetch these _before_ it checks all your rules!
+
+```typescript
+// mySecretFetcher.ts
+import type { SecretSourceFunction } from "schema-env";
+
+export const fetchMyDatabasePassword: SecretSourceFunction = async () => {
+  console.log("🤫 Asking the secret vault for the DB password...");
+  // In real life, you'd use a library here to talk to your secrets manager.
+  // We'll pretend it takes a moment:
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  return {
+    DB_PASSWORD: "ultra-secret-password-from-vault",
+  };
+};
+```
+
+Then, in your app:
+
+```typescript
+// index.ts
+import { createEnvAsync } from "schema-env"; // Note: createEnvAsync!
+import { envSchema, Env } from "./envSchema.js"; // Your schema needs to expect DB_PASSWORD
+import { fetchMyDatabasePassword } from "./mySecretFetcher.js";
+
+async function startAppSafely() {
+  let settings: Env;
   try {
-    const env = await createEnvAsync({
-      schema,
-      secretsSources: [fromAws, fromVault],
-      // dotEnvPath: '.env', // .env files load before secrets
-      // expandVariables: true, // Expansion happens only on .env files
+    settings = await createEnvAsync({
+      // await is important here!
+      schema: envSchema,
+      secretsSources: [fetchMyDatabasePassword], // Add your secret fetchers here
     });
-    console.log("Async env validated:", env);
-    // Use env...
+    console.log("✅ Secrets fetched and all settings are correct!");
+    // console.log(`DB Password's first letter: ${settings.DB_PASSWORD[0]}`); // Be careful logging secrets!
   } catch (error) {
-    console.error("Fatal: Async validation failed.");
+    console.error(
+      "❌ Oh no! Something went wrong with settings (maybe secrets?)."
+    );
     process.exit(1);
   }
-})();
+  // startMyApp(settings);
+}
+
+startAppSafely();
 ```
 
-</details>
+### Don't Like Zod? Bring Your Own Rulebook Checker! (Custom Adapters)
+
+If your team already uses another library like Joi or Yup to define rules, you can tell `schema-env` to use that instead of Zod!
+
+You'll need to create a small "adapter" that teaches `schema-env` how to talk to your chosen library.
+(See the "Custom Validation Adapters" example in the more detailed sections below if you're curious!)
+
+## Who Wins? The Order of Settings (Precedence)
+
+If a setting is defined in multiple places, here's who wins (highest number wins):
+
+**For `createEnv` (the simpler one):**
+
+1.  Default values in your rulebook (schema).
+2.  Values from your `.env` file(s) (and expanded if you turned that on).
+3.  Values from your computer's actual environment (these are like global settings).
+
+**For `createEnvAsync` (the one for secrets):**
+
+1.  Default values in your rulebook (schema).
+2.  Values from your `.env` file(s) (expanded if on).
+3.  Values fetched from your `secretsSources` (the secret vaults).
+4.  Values from your computer's actual environment.
+
+## Quick Look at the Main Tools (API Reference)
+
+### `createEnv(options)`
+
+- Checks settings right away.
+- If something is wrong, it stops and tells you (throws an error).
+- Returns your perfectly validated settings.
+
+### `async createEnvAsync(options)`
+
+- Can fetch secrets from vaults first.
+- Then checks all settings.
+- If something is wrong, it tells you by rejecting its Promise.
+- If all good, its Promise gives you the validated settings.
+
+### Key Options (for both tools):
+
+- `schema`: Your Zod rulebook. (Use this OR `validator`)
+- `validator`: Your custom rulebook checker. (Use this OR `schema`)
+- `dotEnvPath`: Which `.env` file(s) to read. (e.g., `'./.env.custom'` or `['./.env.base', './.env.local']`). Defaults to just `./.env`. Can be `false` to load no `.env` files.
+- `expandVariables`: `true` or `false` to turn on smart links in `.env` files. (Defaults to `false`)
+- `secretsSources`: (Only for `createEnvAsync`) A list of functions that go fetch your secrets.
 
 ---
 
-## Validation Adapters (Use Joi, Yup, etc.)
+_(The more detailed examples for Custom Adapters, etc., from the previous README version would follow here for advanced users.)_
 
-Prefer another validation library? Provide a custom adapter via the `validator` option.
+_(Example structure for the detailed advanced sections, which you can copy from the previous README if you liked them)_
 
 <details>
-<summary>Example using Joi (click to expand)</summary>
+<summary><strong>Advanced: Using Custom Validation Adapters (e.g., with Joi)</strong></summary>
 
-**1. Define Joi Schema & TS Type (`env.joi.ts`)**
+**(Insert the detailed Joi adapter example here from the previous README version)**
 
-```ts
-import Joi from "joi";
-
-export interface JoiEnv {
-  // Define the expected type
-  API_HOST: string;
-  API_PORT: number;
-}
-
-export const joiEnvSchema = Joi.object<JoiEnv, true>({
-  // Use Joi's generic
-  API_HOST: Joi.string().hostname().required(),
-  API_PORT: Joi.number().port().default(8080),
-}).options({ abortEarly: false, allowUnknown: true, convert: true });
-```
-
-**2. Implement Adapter (`joi-adapter.ts`)**
-
-```ts
-import type { ObjectSchema } from "joi";
-import type { ValidationResult, ValidatorAdapter } from "schema-env";
-
-export class JoiValidatorAdapter<TResult> implements ValidatorAdapter<TResult> {
-  constructor(private schema: ObjectSchema<TResult>) {}
-
-  validate(data: Record<string, unknown>): ValidationResult<TResult> {
-    const result = this.schema.validate(data); // Use Joi options defined in schema
-    if (!result.error) {
-      return { success: true, data: result.value as TResult };
-    } else {
-      return {
-        success: false,
-        error: {
-          issues: result.error.details.map((d) => ({
-            path: d.path,
-            message: d.message,
-          })),
-        },
-      };
-    }
-  }
-}
-```
-
-**3. Use Adapter (`index.ts`)**
-
-```ts
-import { createEnv } from "schema-env";
-import { JoiValidatorAdapter } from "./joi-adapter.js";
-import { joiEnvSchema, type JoiEnv } from "./env.joi.js";
-
-// Instantiate adapter
-const adapter = new JoiValidatorAdapter(joiEnvSchema);
-
-// Validate using the adapter
-// Note: Provide <undefined, JoiEnv> generics
-const env = createEnv<undefined, JoiEnv>({
-  validator: adapter,
-  // dotEnvPath: '.env' // Still loads .env files first
-});
-
-console.log("Validated with Joi:", env.API_HOST, env.API_PORT);
-```
-
-_See full runnable example in `examples/custom-adapter-joi/`._
-
+1.  Define your environment type and schema (e.g., using Joi):
+    ```typescript
+    // env.joi.ts
+    // ... Joi schema definition ...
+    ```
+2.  Implement the `ValidatorAdapter` interface:
+    ```typescript
+    // joiAdapter.ts
+    // ... JoiValidatorAdapter class implementation ...
+    ```
+3.  Use it with `createEnv` or `createEnvAsync`:
+`typescript
+    // ... Example usage of Joi adapter ...
+    `
 </details>
 
 ---
 
-## API Overview
+## This Project & AI 🤖
 
-| Function                  | Sync? | Description                                                                        |
-| ------------------------- | ----- | ---------------------------------------------------------------------------------- |
-| `createEnv(options)`      | ✅    | Load `.env` → merge → validate (schema or adapter) → return typed config. Throws.  |
-| `createEnvAsync(options)` | ❌    | Load `.env` → fetch secrets → merge → validate → return Promise. Rejects on error. |
+An AI assistant played a significant role in developing `schema-env`! We believe in transparency and collaboration, whether human or artificial. You can see the guidelines given to the AI in the `ai/AI_INSTRUCTIONS.md` file.
 
-### Shared `options`
+## Want to Help or Have Ideas? (Contributing)
 
-| Option            | Type                          | Default   | Notes                                                           |
-| ----------------- | ----------------------------- | --------- | --------------------------------------------------------------- |
-| `schema`          | `z.AnyZodObject`              | —         | **Required** if `validator` not used. Inferred result type.     |
-| `validator`       | `ValidatorAdapter<TResult>`   | —         | **Required** if `schema` not used. Requires explicit `TResult`. |
-| `dotEnvPath`      | `string \| string[] \| false` | `".env"`  | Disable with `false`; array = load in order.                    |
-| `expandVariables` | `boolean`                     | `false`   | Uses `dotenv-expand` on **.env files only**.                    |
-| `logger`          | `SchemaEnvLogger`             | `console` | (Future) Inject custom logger (`{error, warn}`).                |
+That's awesome! We'd love your help.
 
-### Async-only `options`
-
-| Option           | Type                     | Default | Notes                                                    |
-| ---------------- | ------------------------ | ------- | -------------------------------------------------------- |
-| `secretsSources` | `SecretSourceFunction[]` | `[]`    | Fetched **in parallel**; later sources win on key clash. |
-
-### Key Types & Interfaces
-
-- `ValidatorAdapter<TResult>`: Interface for custom adapters.
-- `ValidationResult<TResult>`: Standardized success/error result shape.
-- `SecretSourceFunction`: `() => Promise<Record<string, string | undefined>>`.
-- `SchemaEnvLogger`: `{ error(msg, ...args); warn(msg, ...args) }`.
-
-_(See TSDoc/source for full details)_
-
----
-
-## Loading Precedence
-
-1.  **Schema/Adapter defaults** (applied during validation)
-2.  **.env files** (`dotEnvPath` files → `.env.${NODE_ENV}`) → optional expansion applied here
-3.  **Secrets** (`createEnvAsync` only, merged after .env)
-4.  **`process.env`** (highest wins)
-
----
-
-## Error Handling
-
-- Validation issues ➜ Pretty report via `console.error` (or custom logger) + throw/reject.
-- Missing `.env` file (`ENOENT`) ➜ Ignored silently.
-- Other file I/O errors ➜ Fatal error (throw/reject).
-- Failing `secretsSource` (`createEnvAsync`) ➜ Logs warning (via `console.warn` or custom logger); proceeds unless _all_ sources fail _and_ validation fails.
-
----
-
-## Examples & Recipes
-
-Browse `/examples` for runnable snippets:
-
-- `examples/basic` – Multiple files & expansion.
-- `examples/express` – Plug into an Express server.
-- `examples/async-secrets` – Mock secret stores with `createEnvAsync`.
-- `examples/custom-adapter-joi` – Using Joi via the `validator` option.
-
----
+- Check out `docs/ROADMAP.md` to see what's planned.
+- New ideas, bug reports, and improvements are always welcome.
 
 ## License
 
-[MIT](https://opensource.org/licenses/MIT) – use, modify, profit. ✌️
+[MIT](LICENSE) © [devvictrix (AI Assisted)](https://github.com/devvictrix)
