@@ -258,15 +258,14 @@ To use a custom validation library (like Joi, Yup, or your own):
 
 1.  **Define your environment type and schema** using your chosen library.
 2.  **Implement the `ValidatorAdapter<TResult>` interface** from `schema-env`. This adapter will:
-    *   Take the merged environment data as input.
-    *   Use your chosen library to validate this data.
-    *   Return a `ValidationResult<TResult>` object, which tells `schema-env` if validation succeeded (and the typed data) or failed (with standardized error details).
+    - Take the merged environment data as input.
+    - Use your chosen library to validate this data.
+    - Return a `ValidationResult<TResult>` object, which tells `schema-env` if validation succeeded (and the typed data) or failed (with standardized error details).
 3.  **Pass an instance of your adapter** to `createEnv` or `createEnvAsync` using the `validator` option. You'll also need to provide the expected result type as a generic argument (e.g., `createEnv<undefined, MyCustomEnvType>({ validator: myAdapter })`).
 
 For a complete, runnable example showing how to create and use a custom adapter with **Joi**, please see the [`examples/custom-adapter-joi/`](https://github.com/devvictrix/schema-env/tree/main/examples/custom-adapter-joi) directory in this repository. It includes:
-    *   A Joi schema definition (`env.joi.ts`).
-    *   The Joi adapter implementation (`joi-adapter.ts`).
-    *   An example of how to use it (`index.ts`).
+_ A Joi schema definition (`env.joi.ts`).
+_ The Joi adapter implementation (`joi-adapter.ts`). \* An example of how to use it (`index.ts`).
 
 This demonstrates the flexibility of `schema-env` in integrating with various validation workflows.
 
