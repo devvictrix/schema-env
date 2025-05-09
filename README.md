@@ -317,8 +317,7 @@ If a setting is defined in multiple places, here's who wins (highest number wins
 
 That's awesome! We'd love your help.
 
-- Check out `docs/ROADMAP.md` to see what's planned.
-- New ideas, bug reports, and improvements are always welcome.
+- New ideas, bug reports, and improvements are always welcome. Feel free to open an issue or a pull request.
 
 ## License
 
