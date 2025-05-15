@@ -1,7 +1,7 @@
 {
   "name": "schema-env",
   "type": "module",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "Type-safe environment variable validation for Node.js using Zod schemas or custom adapters. Load .env files, expand variables, fetch async secrets, and validate process.env at startup.",
   "keywords": [
     "env",

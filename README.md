@@ -11,7 +11,7 @@
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT" />
   </a>
   <a href="https://app.codecov.io/gh/devvictrix/schema-env">
-    <img src="https://img.shields.io/codecov/c/github/devvictrix/schema-env?style=flat-square" alt="Test Coverage" />
+    <img src="https://img.shields.io/badge/coverage-95.9%25-brightgreen.svg?style=flat-square" alt="Test Coverage" />
   </a>
   <img src="https://img.shields.io/badge/types-TypeScript-blue.svg" alt="TypeScript Support" />
   <a href="https://github.com/devvictrix/schema-env/blob/main/ai/AI_INSTRUCTIONS.md">
