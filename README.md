@@ -87,6 +87,8 @@ npm install schema-env zod
 yarn add schema-env zod
 ```
 
+Both Zod 3 and Zod 4 work.
+
 **2. Create Your Rulebook (`envSchema.ts`):**
 Tell `schema-env` what settings your app needs.
 
