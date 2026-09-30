@@ -14,6 +14,6 @@
     "isolatedModules": true,
     "types": ["jest", "node"]
   },
-  "include": ["src/**/*", "tests/index.test.ts"],
+  "include": ["src/**/*", "tests/index.test.ts", "tests/zod-compat.test.ts"],
   "exclude": ["node_modules", "dist", "**/*.cjs"]
 }

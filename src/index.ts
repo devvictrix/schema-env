@@ -5,15 +5,32 @@
 import fs from "node:fs"; // <--- Added Node.js fs import
 import dotenv from "dotenv";
 import { expand } from "dotenv-expand";
-// Use z.AnyZodObject for constraints where appropriate
-import { z, ZodError, ZodObject } from "zod";
 
 // --- Type Definitions ---
 
+type ExpandableDotenv = Pick<dotenv.DotenvConfigOutput, "parsed">;
+
 // Removed DotenvConfigFunction type as it's no longer used
-type DotenvExpandFunction = (
-  config: dotenv.DotenvConfigOutput
-) => dotenv.DotenvConfigOutput;
+type DotenvExpandFunction = (config: ExpandableDotenv) => ExpandableDotenv;
+
+/**
+ * Structural shape of a Zod object schema, satisfied by both Zod 3 and Zod 4.
+ * Zod is deliberately not imported: each major has its own class hierarchy and
+ * types, and a schema built from `zod/v4` must work even when the root `zod`
+ * resolves to v3.
+ */
+interface ZodObjectSchema {
+  readonly shape: unknown;
+  readonly _output: unknown;
+  safeParse(data: unknown):
+    | { success: true; data: unknown }
+    | {
+        success: false;
+        error: {
+          issues: readonly { path: readonly PropertyKey[]; message: string }[];
+        };
+      };
+}
 
 /** Input for schema validation, potentially holding values from all sources. */
 type EnvironmentInput = Record<string, unknown>;
@@ -65,7 +82,7 @@ export interface ValidatorAdapter<TResult> {
  * @template TResult The expected type of the validated environment object.
  */
 interface CreateEnvBaseOptions<
-  TSchema extends z.ZodSchema | undefined,
+  TSchema extends ZodObjectSchema | undefined,
   TResult,
 > {
   /**
@@ -123,10 +140,9 @@ interface CreateEnvBaseOptions<
  * @template TSchema The Zod object schema type if using the default Zod validator.
  * @template TResult The expected type of the validated environment object. Inferred if TSchema is provided.
  */
-// Use AnyZodObject for inference constraint
 export type CreateEnvOptions<
-  TSchema extends z.AnyZodObject | undefined,
-  TResult = TSchema extends z.AnyZodObject ? z.infer<TSchema> : unknown,
+  TSchema extends ZodObjectSchema | undefined,
+  TResult = TSchema extends ZodObjectSchema ? TSchema["_output"] : unknown,
 > = CreateEnvBaseOptions<TSchema, TResult>;
 
 /**
@@ -136,10 +152,9 @@ export type CreateEnvOptions<
  * @template TSchema The Zod object schema type if using the default Zod validator.
  * @template TResult The expected type of the validated environment object. Inferred if TSchema is provided.
  */
-// Use AnyZodObject for inference constraint
 export interface CreateEnvAsyncOptions<
-  TSchema extends z.AnyZodObject | undefined,
-  TResult = TSchema extends z.AnyZodObject ? z.infer<TSchema> : unknown,
+  TSchema extends ZodObjectSchema | undefined,
+  TResult = TSchema extends ZodObjectSchema ? TSchema["_output"] : unknown,
 > extends CreateEnvBaseOptions<TSchema, TResult> {
   /**
    * Optional: An array of functions that fetch secrets asynchronously.
@@ -173,24 +188,25 @@ export interface CreateEnvAsyncOptions<
  * Default implementation of ValidatorAdapter using Zod.
  * @internal
  */
-// Use AnyZodObject for the constraint here
-class ZodValidatorAdapter<T extends z.AnyZodObject>
-  implements ValidatorAdapter<z.infer<T>>
+class ZodValidatorAdapter<T extends ZodObjectSchema>
+  implements ValidatorAdapter<T["_output"]>
 {
   constructor(private schema: T) {}
 
-  validate(data: EnvironmentInput): ValidationResult<z.infer<T>> {
+  validate(data: EnvironmentInput): ValidationResult<T["_output"]> {
     const result = this.schema.safeParse(data);
     if (result.success) {
-      return { success: true, data: result.data };
+      return { success: true, data: result.data as T["_output"] };
     } else {
       return {
         success: false,
         error: {
           // Map Zod errors to standardized format
-          issues: result.error.errors.map((zodError) => ({
-            path: zodError.path,
-            message: zodError.message,
+          issues: result.error.issues.map((zodIssue) => ({
+            path: zodIssue.path.map((segment) =>
+              typeof segment === "symbol" ? segment.toString() : segment
+            ),
+            message: zodIssue.message,
           })),
         },
       };
@@ -295,7 +311,7 @@ function _expandDotEnvValues(
   }
 
   // dotenv-expand expects a specific input structure and mutates it
-  const configToExpand: dotenv.DotenvConfigOutput = {
+  const configToExpand: ExpandableDotenv = {
     parsed: { ...mergedDotEnvParsed },
   };
 
@@ -351,26 +367,15 @@ function _mergeProcessEnv(sourceInput: EnvironmentInput): EnvironmentInput {
  * Renamed from _formatZodError.
  * @internal
  */
-function _formatValidationError(
-  error: { issues: StandardizedValidationError[] } | ZodError
-): string {
-  let issues: StandardizedValidationError[];
-
-  // Check if it's a ZodError or the standardized structure
-  if (error instanceof ZodError) {
-    // Map Zod errors if necessary (e.g., if called directly with ZodError, though unlikely now)
-    issues = error.errors.map((err) => ({
-      path: err.path,
-      message: err.message,
-    }));
-  } else if (error && Array.isArray(error.issues)) {
-    issues = error.issues;
-  } else {
+function _formatValidationError(error: {
+  issues: StandardizedValidationError[];
+}): string {
+  if (!error || !Array.isArray(error.issues)) {
     // Fallback for unexpected error format
     return "❌ Unknown validation error occurred.";
   }
 
-  const formattedErrors = issues.map(
+  const formattedErrors = error.issues.map(
     (err) => `  - ${err.path.join(".") || "UNKNOWN_PATH"}: ${err.message}`
   );
   return `❌ Invalid environment variables:\n${formattedErrors.join("\n")}`;
@@ -479,6 +484,22 @@ async function _fetchSecrets(
 }
 
 /**
+ * Duck-typed instead of `instanceof ZodObject`: Zod 3 and Zod 4 are separate class
+ * hierarchies that can coexist (`zod/v3`, `zod/v4`), so one import cannot recognise both.
+ * @internal
+ */
+function _isZodObjectSchema(schema: unknown): boolean {
+  const candidate = schema as {
+    _zod?: { def?: { type?: unknown } };
+    _def?: { typeName?: unknown };
+  } | null;
+  return (
+    candidate?._zod?.def?.type === "object" ||
+    candidate?._def?.typeName === "ZodObject"
+  );
+}
+
+/**
  * Determines the correct validator adapter based on options.
  * Checks for mutual exclusivity and ensures a valid adapter (either default Zod or custom) is available.
  * @internal
@@ -491,9 +512,8 @@ async function _fetchSecrets(
  * @throws {Error} If neither `schema` nor `validator` is provided.
  */
 function _getValidatorAdapter<
-  // Use AnyZodObject here for the constraint
-  TSchema extends z.AnyZodObject | undefined,
-  TResult = TSchema extends z.AnyZodObject ? z.infer<TSchema> : unknown,
+  TSchema extends ZodObjectSchema | undefined,
+  TResult = TSchema extends ZodObjectSchema ? TSchema["_output"] : unknown,
 >(options: CreateEnvBaseOptions<TSchema, TResult>): ValidatorAdapter<TResult> {
   const { schema, validator } = options;
 
@@ -510,13 +530,11 @@ function _getValidatorAdapter<
 
   // 3. Use default Zod adapter if schema is provided and valid
   if (schema) {
-    // The runtime check remains instanceof ZodObject
-    if (!(schema instanceof ZodObject)) {
+    if (!_isZodObjectSchema(schema)) {
       throw new Error(
         "Invalid 'schema' provided. Expected a ZodObject when 'validator' is not used."
       );
     }
-    // We know schema is a ZodObject here due to the runtime check
     // Cast needed to align with the broader TResult generic
     return new ZodValidatorAdapter(
       schema
@@ -553,16 +571,15 @@ function _getValidatorAdapter<
  * Note: Variable expansion (`expandVariables: true`) happens *after* all `.env` files (2, 3) are merged,
  * but *before* merging with `process.env` (1).
  *
- * @template TSchema - The Zod object schema type (`z.AnyZodObject`) if using default validation. Leave `undefined` if using `validator`.
+ * @template TSchema - The Zod 3 or Zod 4 object schema type if using default validation. Leave `undefined` if using `validator`.
  * @template TResult - The expected type of the validated environment object. Inferred from TSchema if using Zod, otherwise requires explicit specification (e.g., `createEnv<undefined, MyCustomType>({ validator: ... })`).
  * @param options - Configuration options. Requires either `schema` OR `validator`.
  * @returns {TResult} The validated environment object.
  * @throws {Error} If validation fails, options are invalid (e.g., both `schema` and `validator` provided, or neither), or file loading encounters critical errors.
  */
-// Use AnyZodObject for the TSchema constraint
 export function createEnv<
-  TSchema extends z.AnyZodObject | undefined,
-  TResult = TSchema extends z.AnyZodObject ? z.infer<TSchema> : unknown,
+  TSchema extends ZodObjectSchema | undefined,
+  TResult = TSchema extends ZodObjectSchema ? TSchema["_output"] : unknown,
 >(options: CreateEnvOptions<TSchema, TResult>): TResult {
   const {
     dotEnvPath,
@@ -643,7 +660,7 @@ export function createEnv<
  * Note: Variable expansion (`expandVariables: true`) happens *after* all `.env` files (3, 4) are merged,
  * but *before* merging with `secretsSources` (2) and `process.env` (1).
  *
- * @template TSchema - The Zod object schema type (`z.AnyZodObject`) if using default validation. Leave `undefined` if using `validator`.
+ * @template TSchema - The Zod 3 or Zod 4 object schema type if using default validation. Leave `undefined` if using `validator`.
  * @template TResult - The expected type of the validated environment object. Inferred from TSchema if using Zod, otherwise requires explicit specification (e.g., `createEnvAsync<undefined, MyCustomType>({ validator: ... })`).
  * @param options - Configuration options. Requires either `schema` OR `validator`.
  * @returns {Promise<TResult>} A Promise resolving to the validated environment object.
@@ -651,10 +668,9 @@ export function createEnv<
  * @throws {Error} If synchronous file loading encounters critical errors (synchronous throw).
  * @rejects {Error} If asynchronous operations or validation fail.
  */
-// Use AnyZodObject for the TSchema constraint
 export async function createEnvAsync<
-  TSchema extends z.AnyZodObject | undefined,
-  TResult = TSchema extends z.AnyZodObject ? z.infer<TSchema> : unknown,
+  TSchema extends ZodObjectSchema | undefined,
+  TResult = TSchema extends ZodObjectSchema ? TSchema["_output"] : unknown,
 >(options: CreateEnvAsyncOptions<TSchema, TResult>): Promise<TResult> {
   const {
     dotEnvPath,
