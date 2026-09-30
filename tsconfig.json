@@ -3,6 +3,9 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "rootDir": ".",
+    // tsup hardcodes `baseUrl` in its DTS build, which TypeScript 6 flags as deprecated. Drop once tsup stops doing that.
+    "ignoreDeprecations": "6.0",
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,

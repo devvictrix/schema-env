@@ -1,7 +1,7 @@
 {
   "name": "schema-env",
   "type": "module",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "description": "Type-safe environment variable validation for Node.js using Zod schemas or custom adapters. Load .env files, expand variables, fetch async secrets, and validate process.env at startup.",
   "keywords": [
     "env",
@@ -72,14 +72,14 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:coverage": "npm test -- --coverage",
     "build": "tsup src/index.ts --format cjs,esm --dts --clean --sourcemap",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
@@ -94,19 +94,21 @@
     "zod": "^3.0.0 || ^4.0.0"
   },
   "devDependencies": {
-    "@jest/globals": "^29.7.0",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.15.0",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
-    "eslint": "^8.57.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.2.1",
-    "jest": "^29.7.0",
+    "@eslint/js": "^10.0.1",
+    "@jest/globals": "^30.5.2",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.6.3",
+    "@typescript-eslint/eslint-plugin": "^8.71.0",
+    "@typescript-eslint/parser": "^8.71.0",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "globals": "^17.12.0",
+    "jest": "^30.5.2",
     "prettier": "^3.3.3",
-    "ts-jest": "^29.3.2",
-    "tsup": "^8.2.3",
-    "typescript": "^5.8.3",
+    "ts-jest": "^29.4.14",
+    "tsup": "^8.5.1",
+    "typescript": "~6.0.3",
     "zod": "^3.25.76"
   }
 }

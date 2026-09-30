@@ -247,7 +247,8 @@ function _loadDotEnvFiles(
       if (err.code !== "ENOENT") {
         // Throw actual file reading errors (permissions, etc.)
         throw new Error(
-          `❌ Failed to load environment file from ${filePath}: ${err.message}`
+          `❌ Failed to load environment file from ${filePath}: ${err.message}`,
+          { cause: e }
         );
       }
       // console.warn(`[schema-env] Optional env file not found, ignoring: ${filePath}`);
