@@ -922,20 +922,17 @@ describe("createEnvAsync (Asynchronous Validation)", () => {
   const mockSyncErrorSource: SecretSourceFunction = () => {
     throw new Error("Sync error inside source function");
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Intentional for testing non-promise return
   const mockNonPromiseSource: SecretSourceFunction = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return { SYNC_RETURN: "should-not-work" } as any as Promise<
       Record<string, string | undefined>
     >;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Intentional for testing non-object resolution
   const mockNonObjectResolvingSource: SecretSourceFunction = async () => {
     await new Promise((res) => setTimeout(res, 1));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return "i am not an object" as any as Record<string, string | undefined>;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Intentional for testing null resolution
   const mockNullResolvingSource: SecretSourceFunction = async () => {
     await new Promise((res) => setTimeout(res, 1));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
