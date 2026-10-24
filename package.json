@@ -2,7 +2,7 @@
   "name": "schema-env",
   "type": "module",
   "version": "3.0.0",
-  "description": "Type-safe environment variable validation for Node.js using Zod schemas or custom adapters. Load .env files, expand variables, fetch async secrets, and validate process.env at startup.",
+  "description": "Type-safe environment variable validation for Node.js using Zod, Valibot, ArkType or any Standard Schema, or custom adapters. Load .env files, expand variables, fetch async secrets, and validate process.env at startup.",
   "keywords": [
     "env",
     "environment",
@@ -16,6 +16,9 @@
     "typescript",
     "type-safe",
     "zod",
+    "valibot",
+    "arktype",
+    "standard-schema",
     "joi",
     "yup",
     "adapter",
@@ -93,6 +96,11 @@
   "peerDependencies": {
     "zod": "^3.0.0 || ^4.0.0"
   },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@jest/globals": "^30.5.2",
@@ -100,6 +108,7 @@
     "@types/node": "^26.6.3",
     "@typescript-eslint/eslint-plugin": "^8.71.0",
     "@typescript-eslint/parser": "^8.71.0",
+    "arktype": "^2.2.9",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
@@ -109,6 +118,7 @@
     "ts-jest": "^29.4.14",
     "tsup": "^8.5.1",
     "typescript": "~6.0.3",
+    "valibot": "^1.5.0",
     "zod": "^3.25.76"
   }
 }

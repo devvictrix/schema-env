@@ -17,6 +17,11 @@
     "isolatedModules": true,
     "types": ["jest", "node"]
   },
-  "include": ["src/**/*", "tests/index.test.ts", "tests/zod-compat.test.ts"],
+  "include": [
+    "src/**/*",
+    "tests/index.test.ts",
+    "tests/zod-compat.test.ts",
+    "tests/standard-schema.test.ts"
+  ],
   "exclude": ["node_modules", "dist", "**/*.cjs"]
 }

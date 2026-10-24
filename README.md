@@ -37,7 +37,7 @@ Ever tried to build a LEGO set without the right pieces or with confusing instru
 - 📖 **Clear Rules:** Define exactly what your app needs, in one place.
 - 🤝 **Team-Friendly:** Everyone knows what settings are required.
 - 🤖 **Async & Flexible:** Works with modern setups, including fetching secrets.
-- 🧩 **Use Your Favorite Tools:** Zod is built-in, but you can plug in Joi, Yup, etc.
+- 🧩 **Use Your Favorite Tools:** Zod, Valibot, ArkType or any [Standard Schema](https://standardschema.dev) library works out of the box. Joi, Yup, etc. plug in through adapters.
 - 💡 **Smart & Simple API:** Easy to get started, powerful when you need it.
 
 ---
@@ -247,6 +247,25 @@ async function startAppSafely() {
 startAppSafely();
 ```
 
+### Prefer Valibot or ArkType? (Standard Schema)
+
+Any library that implements [Standard Schema](https://standardschema.dev) works with the `schema` option directly, no adapter needed, and the result type is inferred for you. You don't need to install Zod for this.
+
+```typescript
+import * as v from "valibot";
+import { createEnv } from "schema-env";
+
+const env = createEnv({
+  schema: v.object({
+    PORT: v.optional(v.string(), "3000"),
+    API_KEY: v.pipe(v.string(), v.minLength(10)),
+  }),
+});
+// env is typed as { PORT: string; API_KEY: string }
+```
+
+If your schema validates asynchronously (for example Valibot's `objectAsync`), use `createEnvAsync`; `createEnv` will throw and tell you so.
+
 ### Don't Like Zod? Bring Your Own Rulebook Checker! (Custom Adapters)
 
 If your team already uses another library like Joi or Yup to define rules, you can tell `schema-env` to use that instead of Zod!
@@ -307,7 +326,7 @@ If a setting is defined in multiple places, here's who wins (highest number wins
 
 ### Key Options (for both tools):
 
-- `schema`: Your Zod rulebook. (Use this OR `validator`)
+- `schema`: Your rulebook: a Zod object schema or any Standard Schema object schema (Valibot, ArkType, ...). (Use this OR `validator`)
 - `validator`: Your custom rulebook checker. (Use this OR `schema`)
 - `dotEnvPath`: Which `.env` file(s) to read. (e.g., `'./.env.custom'` or `['./.env.base', './.env.local']`). Defaults to just `./.env`. Can be `false` to load no `.env` files.
 - `expandVariables`: `true` or `false` to turn on smart links in `.env` files. (Defaults to `false`)
